@@ -1,0 +1,32 @@
+[
+{
+  "Name": "munge crossbow output to bowtie", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+    "-D", "mapred.reduce.tasks=0",
+	"-input",       "s3://ngousso/test/align",
+	"-output",      "s3://ngousso/test/bowtie",
+	"-mapper",	"perl -W ./crossbow_to_bowtie.pl",
+	"-cacheFile",	"s3n://hts-analyses/scripts/perl/bowtieParse.pl#crossbow_to_bowtie.pl"
+    ]
+  }
+},
+{
+  "Name": "munge bowtie output to sam", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+    "-D", "mapred.reduce.tasks=0",
+	"-input",       "s3://ngousso/test/bowtie",
+	"-output",      "s3://ngousso/test/sam",
+	"-mapper",	"perl ./bowtie2sam.pl",
+	"-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/misc/bowtie2sam.pl#bowtie2sam.pl"
+
+    ]
+  }
+}
+
+]

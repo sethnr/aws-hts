@@ -1,0 +1,85 @@
+[
+{
+  "Name": "Step 1: Align with Bowtie", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-input",       "s3://ngousso/output_pp/",
+      "-output",      "s3://ngousso/intermediate//align",
+      "-mapper",      "s3n://crossbow-emr/1.1.2/Align.pl  --discard-reads=0 --ref=S3://hts-analyses/bowtie_jars/AgamP3.jar --destdir=/mnt/5012 --partlen=1000000 --qual=phred33 --truncate=0  -- --partition 1000000 --mm -t --hadoopout --startverbose -M 1",
+      "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
+      	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm"
+    ] 
+  }
+},
+{
+  "Name": "Crossbow Step 2: Call SNPs with SOAPsnp", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [
+      "-D", "stream.num.map.output.key.fields=3",
+      "-D", "mapred.text.key.partitioner.options=-k1,2",
+      "-D", "mapred.reduce.tasks=32",
+      "-input",       "s3://ngousso/intermediate//align",
+      "-output",      "s3://ngousso/intermediate//snps",
+      "-mapper",      "cat",
+      "-reducer",     "s3n://crossbow-emr/1.1.2/Soapsnp.pl --discard-ref-bins=0 --refjar=S3://hts-analyses/bowtie_jars/AgamP3.jar --destdir=/mnt/5012 --soapsnp= --args=-2_-u_-n_-q --haploid_args=-r_0.0001 --diploid_args=-r_0.00005_-e_0.0001 --basequal=! --partition=1000000 --haploids=none --replace-uscores",
+      "-partitioner", "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
+      "-cacheFile",   "s3n://crossbow-emr/1.1.2/soapsnp64#soapsnp",
+      	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm"
+    ] 
+  }
+},
+{
+  "Name": "Crossbow Step 3: Postprocess", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "stream.num.map.output.key.fields=2",
+      "-D", "mapred.text.key.partitioner.options=-k1,1",
+      "-D", "mapred.reduce.tasks=30",
+      "-input",       "s3://ngousso/intermediate//snps", 
+      "-output",      "s3://ngousso/output_snp/ignoreme2",
+      "-mapper",      "cat", 
+      "-reducer",     "s3n://crossbow-emr/1.1.2/CBFinish.pl  --cmapjar=S3://hts-analyses/bowtie_jars/AgamP3.jar --destdir=/mnt/5012 --output=S3://ngousso/output_snp",
+      "-partitioner", "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner", 
+      	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm"
+    ] 
+  }
+},
+{
+  "Name": "Get counters", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=1",
+      "-input",       "s3n://crossbow-emr/dummy-input",
+      "-output",      "s3://ngousso/output_snp_crossbow_counters/ignoreme1",
+      "-mapper",      "cat",
+      "-reducer",     "s3n://crossbow-emr/1.1.2/Counters.pl  --output=S3://ngousso/output_snp_crossbow_counters",
+      	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm"
+    ]
+  }
+}
+]
