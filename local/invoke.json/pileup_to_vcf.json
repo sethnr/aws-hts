@@ -5,14 +5,14 @@
   "HadoopJarStep": { 
     "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
     "Args": [ 
-      "-input",      "s3://ngousso/test/align_sam",
+      "-input",      "s3://ngousso/test/pileup",
       "-output",       "s3://ngousso/test/vcf",
-      "-mapper",      "perl pileup_to_vcf.pl",
+      "-mapper",      "perl sam2vcf.pl",
       "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
       "-cacheFile",   "s3n://crossbow-emr/1.1.2/samtools64#samtools64",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/pileup_to_vcf.pl#sam_to_vcf.pl",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/misc/sam2vcf.pl#sam2vcf.pl",
     ] 
   }
 }

@@ -10,10 +10,10 @@ while(<>){
 close(TMP);
 
 print STDERR "converting SAM to BAM\n";
-my $command = "./samtools view -Sb ".$tmpfile.".sam > ".$tmpfile.".bam";
+my $command = "samtools view -Sb ".$tmpfile.".sam > ".$tmpfile.".bam";
 system($command);
 
-$command = "./samtools mpileup ".$tmpfile.".bam";
+$command = "samtools mpileup ".$tmpfile.".bam";
 print STDERR "converting BAM to pileup\n$command\n";
 system($command);
 

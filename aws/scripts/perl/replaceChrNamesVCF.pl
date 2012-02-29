@@ -2,7 +2,7 @@
 use strict;
 use Getopt::Long;
 
-my $cmap = "./cmap.txt";
+my $cmap = "cmap.txt";
 
 
 GetOptions(
