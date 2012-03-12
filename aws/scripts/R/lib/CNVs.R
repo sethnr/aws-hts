@@ -26,12 +26,13 @@ getRawDP <- function(vcfs) {
 }
 
 
-
-# getDPStats <- function(vcfs) {
-#  dp <- vector();
-#  for(i in 1:length(vcfs)) {
-#    dp <- c(dp,vcfs[[i]]$INFO$DP);
-#    }
-#  summary(dp)
-#  }
+# parse out depths from VCF file, run summary(depth) and return result
+# 
+getDPStats <- function(vcfs) {
+  dp <- vector();
+  for(i in 1:length(vcfs)) {
+    dp <- c(dp,vcfs[[i]]$INFO$DP);
+  }
+  summary(dp)
+}
 

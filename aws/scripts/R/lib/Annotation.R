@@ -1,4 +1,5 @@
 ## General gene-related annotation methods, variant effect predictor, biomart, etc
+library(biomaRt)
 
 
 #############
@@ -10,28 +11,19 @@
 #
 #############
 
+## get data.frame of [attributes] for all genes (basis for following methods)
+## getGenesBM(attributes) 
+getGenesAtts <- function(attributes) {
+  ensembl <- useMart("metazoa_mart_12", "agambiae_eg_gene")
+  genes <- getBM(attributes=attributes, mart = ensembl)
+  return(genes)
+}
 
 
 ## get data.frame of gene / desc / location info for all genes
 ## getGenesBM()
 getGenesBM <- function() {
-  library(biomaRt)
-  ensembl <- useMart("metazoa_mart_12", "agambiae_eg_gene")
-
-  attributes <- c("ensembl_gene_id",
-                  "ensembl_transcript_id",
-                  "description",
-                  "chromosome_name",
-                  "start_position",
-                  "end_position",
-                  "strand",
-                  "interpro",
-                  "interpro_description",
-                  "go_accession",
-                  "namespace_1003",
-                  "name_1006")
-
-  allAtts <- c("ensembl_gene_id",
+  attributes  <- c("ensembl_gene_id",
                   "ensembl_transcript_id",
                   "description",
                   "chromosome_name",
@@ -39,11 +31,32 @@ getGenesBM <- function() {
                   "end_position",
                   "strand")
 
-#  genes <- getBM(attributes=attributes, mart = ensembl)
-  genes <- getBM(attributes=allAtts, mart = ensembl)
-  return(genes)
+  return(getGenesAtts(attributes))
 }
-  
+
+## get data.frame of gene / go_term / desc info for all genes
+## getGenesBM()
+getGenesGO <- function() {
+  attributes <- c("ensembl_gene_id",
+                  "ensembl_transcript_id",
+                  "go_accession",
+                  "namespace_1003",
+                  "name_1006")
+
+  return(getGenesAtts(attributes))
+}
+
+## get data.frame of gene / interpro_id / desc info for all genes
+## getGenesIpr()
+getGenesIpr <- function() {
+  attributes <- c("ensembl_gene_id",
+                  "ensembl_transcript_id",
+                  "interpro",
+                  "interpro_description"
+                  )
+  return(getGenesAtts(attributes))
+}
+
 #############
 #
 #    the following methods relate to Variant Effect Predictor annotations

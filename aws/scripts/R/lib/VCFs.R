@@ -77,7 +77,6 @@ getBafs <- function(vcfs, minDP=NULL, maxDP=NULL) {
   rm(varName, DP4l, bafDF, vcfs);
   
   bafs[is.na(bafs)] <- 0
-  bafs <- cbind(bafs,Contrast=abs(bafs$FD03_high.peaks - bafs$FD03_zero.peaks))
   return(bafs)
 }
 
