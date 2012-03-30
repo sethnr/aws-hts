@@ -1,0 +1,21 @@
+[
+{
+  "Name": "Align with Bowtie", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-input",       "s3://ngousso/test/preproc",
+      "-output",      "s3://ngousso/APL1/align",
+      "-mapper",      "zcat",
+      "-mapper",      "bowtie -S -M 1 -t --partition 10000   --12 -",
+      "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
+      	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm"
+    ] 
+  }
+}
+]

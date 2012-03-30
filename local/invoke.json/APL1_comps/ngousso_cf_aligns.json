@@ -1,0 +1,118 @@
+[
+{
+  "Name": "Preprocess ngousso",
+  "ActionOnFailure": "TERMINATE_JOB_FLOW",
+  "HadoopJarStep": {
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar",
+    "Args": [
+      "-D", "mapred.reduce.tasks=1",
+      "-input",       "s3://ngousso/ngousso_emr.manifest",
+      "-output",      "s3://ngousso/preprocess",
+      "-mapper",      "s3n://crossbow-emr/1.1.2/Copy.pl  --compress=gzip --stop=0 --maxperfile=500000 --s --push=S3://ngousso/full/preproc",
+      "-inputformat", "org.apache.hadoop.mapred.lib.NLineInputFormat",
+      	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm",
+      "-cacheFile",   "s3n://crossbow-emr/1.1.2/fastq-dump64#fastq-dump",
+      "-cacheFile",   "s3n://crossbow-emr/1.1.2/samtools64#samtools"
+    ]
+  }
+},
+{
+  "Name": "Step 1: Align pest", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-input",       "s3://ngousso/preprocess/",
+      "-output",      "s3://ngousso/intermediate/align_pest",
+      "-mapper",      "s3n://crossbow-emr/1.1.2/Align.pl  --discard-reads=0 --ref=S3://hts-analyses/bowtie_jars/AgamP3.jar --destdir=/mnt/5012 --partlen=1000000 --qual=phred33 --truncate=0  -- --partition 1000000 --mm -t --hadoopout --startverbose -M 1",
+      "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
+      	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm"
+    ] 
+  }
+},
+{
+  "Name": "Step 1: Align APL1-A", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-input",       "s3://ngousso/preprocess/",
+      "-output",      "s3://ngousso/intermediate/align_apl1a",
+      "-mapper",      "s3n://crossbow-emr/1.1.2/Align.pl  --discard-reads=0 --ref=S3://hts-analyses/bowtie_jars/apl1Alpha.jar --destdir=/mnt/5012 --partlen=1000000 --qual=phred33 --truncate=0  -- --partition 1000000 --mm -t --hadoopout --startverbose -M 1",
+      "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
+      	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm"
+    ] 
+  }
+},
+{
+  "Name": "Step 1: Align APL1-G", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-input",       "s3://ngousso/preprocess/",
+      "-output",      "s3://ngousso/intermediate/align_apl1g",
+      "-mapper",      "s3n://crossbow-emr/1.1.2/Align.pl  --discard-reads=0 --ref=S3://hts-analyses/bowtie_jars/apl1Gamma.jar --destdir=/mnt/5012 --partlen=1000000 --qual=phred33 --truncate=0  -- --partition 1000000 --mm -t --hadoopout --startverbose -M 1",
+      "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
+      	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm"
+    ] 
+  }
+},
+{
+  "Name": "Step 1: Align APL1-G2", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-input",       "s3://ngousso/preprocess/",
+      "-output",      "s3://ngousso/intermediate/align_apl1g2",
+      "-mapper",      "s3n://crossbow-emr/1.1.2/Align.pl  --discard-reads=0 --ref=S3://hts-analyses/bowtie_jars/apl1Gamma2.jar --destdir=/mnt/5012 --partlen=1000000 --qual=phred33 --truncate=0  -- --partition 1000000 --mm -t --hadoopout --startverbose -M 1",
+      "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
+      	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm"
+    ] 
+  }
+},
+{
+  "Name": "Get counters", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=1",
+      "-input",       "s3n://crossbow-emr/dummy-input",
+      "-output",      "s3://ngousso/output_snp_crossbow_counters/ignoreme1",
+      "-mapper",      "cat",
+      "-reducer",     "s3n://crossbow-emr/1.1.2/Counters.pl  --output=S3://ngousso/output_snp_crossbow_counters",
+      	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm"
+    ]
+  }
+}
+]
