@@ -26,6 +26,7 @@ getRawDP <- function(vcfs) {
 }
 
 
+
 # parse out depths from VCF file, run summary(depth) and return result
 # 
 getDPStats <- function(vcfs) {
