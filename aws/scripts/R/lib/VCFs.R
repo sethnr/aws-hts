@@ -30,6 +30,31 @@ getVcfs <- function(pattern) {
 }
 
 
+#dbSNPalleles Assignment Chromosome Position Strand
+# NOT YET WORKING!!! 
+getInfo <- function(vcfs) {
+  retDF <- data.frame()
+  vcfNames <- names(vcfs)
+  for(i in 1:length(vcfs)) {
+    write(paste(i," ",vcfNames[[i]]),stderr())
+    alleles <- paste(vcfs[[i]]$REF,vcfs[[i]]$ALT,sep="/");
+    varName <- paste(vcfs[[i]]$CHROM,vcfs[[i]]$POS,alleles, sep = "_", collapse = NULL)
+    retDF$NAME <- varName;
+    retDF$dbSNPalleles <- alleles;
+    retDF$Assignment <- alleles;
+    retDF$Strand <- "+";
+  }
+  
+  rm(varName, vcfNames, alleles);
+  
+  retDF[is.na(retDF)] <- 0
+  colNames <- names(retDF)
+  retDF<-cbind(t(as.data.frame(strsplit(as.character(retDF$Uploaded_variation),"[_]")))[,1:2])
+  names(retDF) <- c("CHR","POS");
+  retDF$POS <- as.numeric(as.character(retDF$POS))
+  return(retDF)
+}
+
 
 
 ## get B-allele frequencies from output of getVcf
@@ -45,8 +70,11 @@ getBafs <- function(vcfs, minDP=NULL, maxDP=NULL) {
     
     vcfs[[i]]$INFO$BAF <- rowSums(vcfs[[i]]$INFO$DP4[,3:4],na.rm=FALSE)/vcfs[[i]]$INFO$DP
     varName <- paste(vcfs[[i]]$CHROM,vcfs[[i]]$POS,paste(vcfs[[i]]$REF,vcfs[[i]]$ALT,sep="/"), sep = "_", collapse = NULL)
-    bafDF <- as.data.frame(list(varName, vcfs[[i]]$INFO$BAF))
-    names(bafDF) <- c("Uploaded_variation",vcfNames[[i]]);
+
+    bafDF <- as.data.frame(list(varName, vcfs[[i]]$POS, vcfs[[i]]$INFO$BAF))
+    names(bafDF) <- c("Uploaded_variation","POS",vcfNames[[i]]);
+    #bafDF <- as.data.frame(list(varName, vcfs[[i]]$INFO$BAF))
+    #names(bafDF) <- c("Uploaded_variation",vcfNames[[i]]);
 
     under <- data.frame(); over <- data.frame();
     if(exists("minDP") && (!is.null(minDP))) {
@@ -70,7 +98,8 @@ getBafs <- function(vcfs, minDP=NULL, maxDP=NULL) {
     bafDF <- bafDF[(!bafDF$Uploaded_variation %in% over),];
     write(paste("filtered: ",pre," -> ",(length(bafDF[,1]))),stderr())      
 
-    if(length(bafs) > 0 ) { bafs <- merge(bafs,bafDF,all=TRUE,by="Uploaded_variation");}
+#    if(length(bafs) > 0 ) { bafs <- merge(bafs,bafDF,all=TRUE,by="Uploaded_variation");}
+    if(length(bafs) > 0 ) { bafs <- merge(bafs,bafDF,all=TRUE);}
     else { bafs <- bafDF}
   }
   
@@ -80,3 +109,28 @@ getBafs <- function(vcfs, minDP=NULL, maxDP=NULL) {
   return(bafs)
 }
 
+
+## parse all VCFs in directory into SNPmatrix
+## vcfs <- getSM( "FD0.*.vcf.gz$")
+getSMs <- function(pattern, grange) {
+  vcfFiles <- list.files(path = ".", pattern = pattern)
+  vcfTabs <- vector();
+  vcfNames <- vector();
+  SMs <- vector();
+
+  for (filename in vcfFiles) {
+    write(filename, stderr());
+    vcftab <- TabixFile(filename, index = paste(filename, "tbi", sep="."));
+    vcfSM <- vcf2sm(vcftab, grange, 7)
+    
+    SMs <- c(vcfs,vcf);
+    write("vcfname",stderr())
+    vcfNames <- c(vcfNames,gsub(".vcf.gz$","",filename));
+    write("done",stderr());
+  }
+  rm(vcf, vcftab, vcfScan, vcfFiles, vcfTabs)
+  
+  names(SMs) <- vcfNames
+  return(SMs)
+
+}

@@ -7,8 +7,8 @@
     "Args": [
       "-D", "mapred.reduce.tasks=1",
       "-input",       "s3://ngousso/ngousso_emr.manifest",
-      "-output",      "s3://ngousso/preprocess",
-      "-mapper",      "s3n://crossbow-emr/1.1.2/Copy.pl  --compress=gzip --stop=0 --maxperfile=500000 --s --push=S3://ngousso/full/preproc",
+      "-output",      "s3://ngousso/preproc",
+      "-mapper",      "s3n://crossbow-emr/1.1.2/Copy.pl  --compress=gzip --stop=0 --maxperfile=500000 --s --push=S3://ngousso/preprocess",
       "-inputformat", "org.apache.hadoop.mapred.lib.NLineInputFormat",
       	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
 	"-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
@@ -28,7 +28,7 @@
     "Args": [ 
       "-D", "mapred.reduce.tasks=0",
       "-input",       "s3://ngousso/preprocess/",
-      "-output",      "s3://ngousso/intermediate/align_pest",
+      "-output",      "s3://ngousso/align_pest",
       "-mapper",      "s3n://crossbow-emr/1.1.2/Align.pl  --discard-reads=0 --ref=S3://hts-analyses/bowtie_jars/AgamP3.jar --destdir=/mnt/5012 --partlen=1000000 --qual=phred33 --truncate=0  -- --partition 1000000 --mm -t --hadoopout --startverbose -M 1",
       "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
       	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
@@ -47,7 +47,7 @@
     "Args": [ 
       "-D", "mapred.reduce.tasks=0",
       "-input",       "s3://ngousso/preprocess/",
-      "-output",      "s3://ngousso/intermediate/align_apl1a",
+      "-output",      "s3://ngousso/align_apl1a",
       "-mapper",      "s3n://crossbow-emr/1.1.2/Align.pl  --discard-reads=0 --ref=S3://hts-analyses/bowtie_jars/apl1Alpha.jar --destdir=/mnt/5012 --partlen=1000000 --qual=phred33 --truncate=0  -- --partition 1000000 --mm -t --hadoopout --startverbose -M 1",
       "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
       	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
@@ -66,7 +66,7 @@
     "Args": [ 
       "-D", "mapred.reduce.tasks=0",
       "-input",       "s3://ngousso/preprocess/",
-      "-output",      "s3://ngousso/intermediate/align_apl1g",
+      "-output",      "s3://ngousso/align_apl1g",
       "-mapper",      "s3n://crossbow-emr/1.1.2/Align.pl  --discard-reads=0 --ref=S3://hts-analyses/bowtie_jars/apl1Gamma.jar --destdir=/mnt/5012 --partlen=1000000 --qual=phred33 --truncate=0  -- --partition 1000000 --mm -t --hadoopout --startverbose -M 1",
       "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
       	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
@@ -85,7 +85,7 @@
     "Args": [ 
       "-D", "mapred.reduce.tasks=0",
       "-input",       "s3://ngousso/preprocess/",
-      "-output",      "s3://ngousso/intermediate/align_apl1g2",
+      "-output",      "s3://ngousso/align_apl1g2",
       "-mapper",      "s3n://crossbow-emr/1.1.2/Align.pl  --discard-reads=0 --ref=S3://hts-analyses/bowtie_jars/apl1Gamma2.jar --destdir=/mnt/5012 --partlen=1000000 --qual=phred33 --truncate=0  -- --partition 1000000 --mm -t --hadoopout --startverbose -M 1",
       "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
       	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",

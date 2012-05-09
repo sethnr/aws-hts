@@ -14,7 +14,7 @@ library(biomaRt)
 ## get data.frame of [attributes] for all genes (basis for following methods)
 ## getGenesBM(attributes) 
 getGenesAtts <- function(attributes) {
-  ensembl <- useMart("metazoa_mart_12", "agambiae_eg_gene")
+  ensembl <- useMart("metazoa_mart_13", "agambiae_eg_gene")
   genes <- getBM(attributes=attributes, mart = ensembl)
   return(genes)
 }
