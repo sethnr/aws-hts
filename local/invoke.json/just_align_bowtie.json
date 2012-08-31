@@ -1,20 +1,21 @@
 [
 {
   "Name": "Align with Bowtie", 
-  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "ActionOnFailure": "CANCEL_AND_WAIT", 
   "HadoopJarStep": { 
     "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
     "Args": [ 
-      "-input",       "s3://ngousso/test/preproc",
-      "-output",      "s3://ngousso/test/align",
-      "-mapper",      "zcat",
-      "-mapper",      "bowtie -S -M 1 -t --partition 10000   --12 -",
+      "-input",       "s3://ngousso/test2/preprocess",
+      "-output",      "s3://ngousso/test2/align",
+      "-mapper",      "bowtie -S -M 1 -t --partition 10000 ./genomes/index/Agam  --12 ",
       "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
-      	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
-	"-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
-	"-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
-	"-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
-	"-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm"
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm",
+      "-cacheArchive","s3n://hts-analyses/resources/AgamP3.I.jar#genomes",
+      "-cacheFile",   "s3n://hts-analyses/resources/AgamP3.header#AgamP3.header"
     ] 
   }
 }

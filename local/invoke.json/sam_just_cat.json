@@ -1,24 +1,24 @@
 [
 {
-  "Name": "sam_to_vcf", 
+  "Name": "sam cat stripHead_sort", 
   "ActionOnFailure": "TERMINATE_JOB_FLOW", 
   "HadoopJarStep": { 
     "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
     "Args": [ 
-      "-D", "mapred.reduce.tasks=100",
+      "-D", "mapred.reduce.tasks=10",
       "-D", "mapred.text.key.partitioner.options=-k1,2",
       "-D", "stream.num.map.output.key.fields=3",
-      "-input",	      "s3://ngousso/test/sam_tagged_noReduce",
-      "-output",      "s3://ngousso/test/vcf_nR",
-      "-mapper",      "perl stripSam.pl",
-      "-reducer",     "perl sam_to_vcf.pl -ref ./genomes/AgamP3.I.fa -header ./AgamP3.header",
+      "-input",	      "s3://ngousso/test/sam",
+      "-output",      "s3://ngousso/test/cat_def",
+      "-mapper",      "perl stripSamHeader.pl",
+      "-reducer",     "sort -n -k=1,4",
       "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
       "-cacheFile",   "s3n://crossbow-emr/1.1.2/samtools64#samtools64",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
-      "-cacheArchive","s3n://hts-analyses/resources/AgamP3.I.jar#genomes",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSamHeader.pl#stripSamHeader.pl",
+      "-cacheFile",   "s3n://hts-analyses/genomes.tgz#genomes.tgz",
       "-cacheFile",   "s3n://hts-analyses/resources/AgamP3.header#AgamP3.header"
     ] 
   }

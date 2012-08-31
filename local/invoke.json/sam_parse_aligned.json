@@ -1,0 +1,40 @@
+[
+{
+  "Name": "strip non-matched lines", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-input",       "s3://ngousso/full/sam",
+      "-output",      "s3://ngousso/full/sam_aligned",
+      "-mapper",      "perl stripUnaligned.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripUnaligned.pl#stripUnaligned.pl",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm"
+    ] 
+  }
+},
+{
+  "Name": "strip matched lines", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-input",       "s3://ngousso/full/sam",
+      "-output",      "s3://ngousso/full/sam_unaligned",
+      "-mapper",      "perl stripAligned.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripAligned.pl#stripAligned.pl",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm"
+    ] 
+  }
+}
+]

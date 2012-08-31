@@ -1,0 +1,80 @@
+[
+{
+  "Name": "Preprocess short reads",
+  "ActionOnFailure": "TERMINATE_JOB_FLOW",
+  "HadoopJarStep": {
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar",
+    "Args": [
+      "-D", "mapred.reduce.tasks=1",
+      "-input",       "s3://ngousso/ngousso_test.manifest",
+      "-output",      "s3://ngousso/test2/null",
+      "-mapper",      "s3n://crossbow-emr/1.1.2/Copy.pl  --compress=gzip --stop=0 --maxperfile=500000 --s --push=S3://ngousso/test2/preproc",
+      "-inputformat", "org.apache.hadoop.mapred.lib.NLineInputFormat",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+      "-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm",
+      "-cacheFile",   "s3n://crossbow-emr/1.1.2/fastq-dump64#fastq-dump",
+      "-cacheFile",   "s3n://crossbow-emr/1.1.2/samtools64#samtools"
+    ]
+  }
+},
+{
+  "Name": "Align with Bowtie (sam)", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-input",       "s3://ngousso/test2/preproc",
+      "-output",      "s3://ngousso/test2/sam",
+      "-mapper",      "s3n://crossbow-emr/1.1.2/Align.pl  --discard-reads=0 --ref=S3://hts-analyses/bowtie_jars/AgamP3.jar --destdir=/mnt/16326 --partlen=1000000 --qual=phred33 --truncate=0  -- --partition 1000000 -t --hadoopout --startverbose -M 1 --sam",
+      "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
+      	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm"
+    ] 
+  }
+},
+{
+  "Name": "strip non-matched lines & group-tag", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-input",       "s3://ngousso/test2/sam",
+      "-output",      "s3://ngousso/test2/sam_aligned",
+      "-mapper",      "perl stripUnaligned.pl",
+      "-reducer",     "perl splitAlignTags.pl -jobs 20 -header ./AgamP3.header",
+      "-cacheFile",   "s3n://hts-analyses/resources/AgamP3.header#AgamP3.header"
+    ] 
+  }
+},
+{
+  "Name": "sam to vcf (samtools)", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=40",
+      "-D", "mapred.text.key.partitioner.options=-k1,2",
+      "-D", "stream.num.map.output.key.fields=3",
+      "-input",	      "s3://ngousso/test2/sam",
+      "-output",      "s3://ngousso/test2/vcf",
+      "-mapper",      "perl stripSamHeader.pl",
+      "-reducer",     "perl sam_to_vcf.pl -ref ./genomes/AgamP3.I.fa -header ./AgamP3.header",
+      "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
+      "-cacheFile",   "s3n://crossbow-emr/1.1.2/samtools64#samtools64",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSamHeader.pl#stripSamHeader.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
+      "-cacheArchive","s3n://hts-analyses/resources/AgamP3.I.jar#genomes",
+      "-cacheFile",   "s3n://hts-analyses/resources/AgamP3.header#AgamP3.header"
+    ] 
+  }
+}
+]

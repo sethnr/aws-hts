@@ -1,0 +1,43 @@
+[
+{
+  "Name": "Align with Bowtie (hadout + sam)", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-input",       "s3://ngousso/test/preproc",
+      "-output",      "s3://ngousso/test/sam-sam",
+      "-mapper",      "s3n://crossbow-emr/1.1.2/Align.pl  --discard-reads=0 --ref=S3://hts-analyses/bowtie_jars/AgamP3.jar --destdir=/mnt/16326 --partlen=100000 --qual=phred33 --truncate=0  -- --partition 100000 -t --hadoopout --startverbose -M 1 --sam",
+      "-cacheFile",   "s3n://crossbow-emr/1.1.2/bowtie64#bowtie",
+      	"-cacheFile", "s3n://crossbow-emr/1.1.2/Get.pm#Get.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Counters.pm#Counters.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Util.pm#Util.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/Tools.pm#Tools.pm",
+	"-cacheFile", "s3n://crossbow-emr/1.1.2/AWS.pm#AWS.pm"
+    ] 
+  }
+},
+{
+  "Name": "head_sam_aligned", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=100",
+      "-D", "mapred.text.key.partitioner.options=-k1,2",
+      "-D", "stream.num.map.output.key.fields=3",
+
+      "-partitioner", "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
+      "-input",	      "s3://ngousso/test/sam-sam",
+      "-output",      "s3://ngousso/test/sam-sam_head",
+      "-mapper",     "cat",
+      "-reducer",    "perl headCount.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/headCount.pl#headCount.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSamHeader.pl#stripSamHeader.pl",
+      "-cacheArchive","s3n://hts-analyses/resources/AgamP3.I.jar#genomes",
+      "-cacheFile",   "s3n://hts-analyses/resources/AgamP3.header#AgamP3.header"
+    ] 
+  }
+}
+]

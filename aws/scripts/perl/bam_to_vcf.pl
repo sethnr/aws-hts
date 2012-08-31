@@ -24,6 +24,7 @@ close(TMP);
 
 my $command;
 
+print STDERR `find . `;
 
 #print STDERR "converting SAM to BAM\n";
 #$command = "samtools view -Sb ".$tmpfile.".sam > ".$tmpfile.".bam";

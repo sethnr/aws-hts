@@ -1,0 +1,21 @@
+[
+{
+  "Name": "head_sam_files", 
+  "ActionOnFailure": "TERMINATE_JOB_FLOW", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-D", "mapred.text.key.partitioner.options=-k1,2",
+      "-D", "stream.num.map.output.key.fields=3",
+      "-input",	      "s3://ngousso/full/vcf",
+      "-output",      "s3://ngousso/full/head_vcf",
+      "-mapper",     "perl headCount.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/headCount.pl#headCount.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSamHeader.pl#stripSamHeader.pl",
+      "-cacheArchive","s3n://hts-analyses/resources/AgamP3.I.jar#genomes",
+      "-cacheFile",   "s3n://hts-analyses/resources/AgamP3.header#AgamP3.header"
+    ] 
+  }
+}
+]

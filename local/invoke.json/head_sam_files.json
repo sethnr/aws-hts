@@ -1,0 +1,42 @@
+[
+{
+  "Name": "tag unaligned", 
+  "ActionOnFailure": "CANCEL_AND_WAIT", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D",		"mapred.reduce.tasks=0",
+      "-input",       	"s3://ngousso/test/sam-sam",
+      "-output",      	"s3://ngousso/test/sam_tagged_noReduce",
+      "-mapper",     	"perl splitAlignTags.pl -jobs 100 -header ./AgamP3.header",
+      "-cacheFile",   	"s3n://hts-analyses/resources/AgamP3.header#AgamP3.header",
+      "-cacheFile",   	"s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
+      "-cacheFile",   	"s3n://hts-analyses/scripts/perl/stripUnaligned.pl#stripUnaligned.pl",
+      "-cacheFile",   	"s3n://hts-analyses/scripts/perl/splitAlignTags.pl#splitAlignTags.pl"
+   ] 
+  }
+},
+{
+  "Name": "head_sam", 
+  "ActionOnFailure": "CANCEL_AND_WAIT", 
+  "HadoopJarStep": { 
+    "Jar": "/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=100",
+      "-D", "mapred.text.key.partitioner.options=-k1,2",
+      "-D", "stream.num.map.output.key.fields=3",
+
+      "-partitioner", "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
+      "-input",	      "s3://ngousso/test/sam_tagged_noReduce",
+      "-output",      "s3://ngousso/test/sam_tagged_nR_head",
+      "-mapper",      "perl stripSam.pl",
+      "-reducer",     "perl headCount.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/headCount.pl#headCount.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSamHeader.pl#stripSamHeader.pl",
+      "-cacheFile",   	"s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
+      "-cacheFile",   "s3n://hts-analyses/resources/AgamP3.header#AgamP3.header"
+    ] 
+  }
+},
+
+]
