@@ -42,11 +42,14 @@ while(<>) {
   my $chr = $F[2];
   
   my $rem = int($posn / $split);            #get whole divisor of posn by split 
-  print STDOUT $chr."\t".$rem."\t".$_;
+  #print $chr\t$block as keys
+#  print STDOUT $chr."\t".$rem."\t".$_;
+  #print $chr.block\tpos as keys
+  print STDOUT $chr.".".$rem."\t".$posn."\t".$_;
   #if start in lower flank of next one up... (i.e. might run into next block) 
   #also print in next key
   if(($rem +1)  * $split < $posn + $flank){
-    print STDOUT $chr.".".($rem+1 * $split)."\t".($rem+1)."\t".$_;
+    print STDOUT $chr.".".($rem+1 * $split)."\t".$posn."\t".$_;
   }
 }
 
