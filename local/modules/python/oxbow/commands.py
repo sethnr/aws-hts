@@ -37,9 +37,6 @@ json['preprocess'] = '''{
     ]
   }
 }'''
-#default_args['preprocess'] = {'input':'ngousso.manifest',
-#                              'OUT':'preproc',
-#                              'NULL':'null'}
 
 # ALIGN WITH Bowtie (sam)
 descs['align'] = '''align seqs in tgz files using align.pl script from crossbow'''
@@ -90,7 +87,7 @@ json['sam'] = '''{
 
 
 # ALIGN WITH Bowtie (sam)
-descs['samtag'] = '''aligns seqs in tgz files using samtools'''
+#descs['samtag'] = '''aligns seqs in tgz files using samtools'''
 json['samtag'] = '''{
   "Name": "Align with Bowtie (sam) and tag", 
   "ActionOnFailure": "$ACTION_ON_FAILURE", 
@@ -103,7 +100,7 @@ json['samtag'] = '''{
       "-input",       "$INPUT",
       "-output",      "$OUTPUT",
       "-mapper",      "$CROSSBOW_EMR/Align.pl  --discard-reads=0 --ref=$GENOME_REF_JAR --destdir=/mnt/16326 --partlen=1000000 --qual=phred33 --truncate=0  -- --partition 1000000 -t --hadoopout --startverbose -M 1 --sam",
-      "-reducer",     "perl splitAlignTags.pl -jobs 100 -header ./sam.header",
+      "-reducer",     "perl splitAlignTags.pl -jobs 50 -header ./sam.header",
       "-partitioner",     "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
       "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
       "-cacheFile",   "$CROSSBOW_EMR/Get.pm#Get.pm",
@@ -132,7 +129,7 @@ json['tag']='''{
     "Args": [ 
       "-input",       "$INPUT",
       "-output",      "$OUTPUT",
-      "-mapper",     	"perl splitAlignTags.pl -jobs 100 -header ./sam.header",
+      "-mapper",     	"perl splitAlignTags.pl -jobs $NO_SAM_FILES -header ./sam.header",
       "-cacheFile",   	"s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
       "-cacheFile",   	"s3n://hts-analyses/scripts/perl/stripUnaligned.pl#stripUnaligned.pl",
       "-cacheFile",   	"s3n://hts-analyses/scripts/perl/splitAlignTags.pl#splitAlignTags.pl",
@@ -141,6 +138,83 @@ json['tag']='''{
   }
 }'''
 
+
+descs['splitsam']='''takes output of tag, splits based on chr & keys, remakes bam file'''
+json['splitsam']='''{
+  "Name": "field split & remake sam", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=$NO_SAM_TASKS",
+      "-D", "map.output.key.value.fields.spec=0:2-",
+      "-D", "mapred.text.key.partitioner.options=-k0",
+      "-D", "stream.num.map.output.value.fields=2",
+      "-input",	      "$INPUT",
+      "-output",      "$OUTPUT",
+      "-mapper",      "perl splitAlignTags.pl -jobs $NO_SAM_FILES -header sam.header",
+      "-reducer",     "perl stripSam.pl --header sam.header --aligned --cliptag",
+      "-partitioner", "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/splitAlignTags.pl#splitAlignTags.pl",
+
+      "-cacheArchive","$GENOME_REF_JAR#genomes",
+      "-cacheFile",   "$SAM_HEADER#sam.header"
+    ] 
+  }
+}'''
+
+
+descs['samtobam']='''takes output of sam / splitsam, makes bam file (no reduce)'''
+json['samtobam']='''{
+  "Name": "sam to (sorted) bam - samtools", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-input",	      "$INPUT",
+      "-output",      "$OUTPUT",
+      "-mapper",      "perl sam_to_bam.pl",
+      "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
+
+      "-cacheFile", "$GENOME_REF_I#ref_genome.fa",
+      "-cacheFile",   "$SAM_HEADER#sam.header"
+    ] 
+  }
+}'''
+
+descs['samdepth']='''takes output of sam / splitsam, calculates depth (samtools), sum by posn (mapred:aggregate) '''
+json['samdepth']='''{
+  "Name": "read depth", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-input",	      "$INPUT",
+      "-output",      "$OUTPUT",
+      "-mapper",      "perl sam_depth.pl --aggregate",
+      "-reducer",     "aggregate",
+      "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_depth.pl#sam_depth.pl",
+
+      "-cacheFile", "$GENOME_REF_I#ref_genome.fa",
+      "-cacheFile",   "$SAM_HEADER#sam.header"
+    ] 
+  }
+}'''
+
+
+
+
 descs['vcf']='''use samtools (mpileup) to create vcf file; takes output of 'sam' as input'''
 json['vcf']='''{
   "Name": "sam to vcf (samtools)", 
@@ -148,21 +222,17 @@ json['vcf']='''{
   "HadoopJarStep": { 
     "Jar": "$HADOOP_JAR", 
     "Args": [ 
-      "-D", "mapred.reduce.tasks=100",
-      "-D", "mapred.text.key.partitioner.options=-k1,2",
-      "-D", "stream.num.map.output.key.fields=3",
+      "-D", "mapred.reduce.tasks=0",
       "-input",	      "$INPUT",
       "-output",      "$OUTPUT",
-      "-mapper",      "perl stripSam.pl",
-      "-reducer",     "perl sam_to_vcf.pl -ref ./genomes/AgamP3.I.fa -header ./sam.header",
+      "-mapper",      "perl sam_to_vcf.pl -cliptag -ref ./ref_genome.fa",
       "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
-      "-cacheFile",   "$CROSSBOW_EMR/samtools64#samtools64",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
 
-      "-cacheArchive","$GENOME_REF_JAR#genomes",
+      "-cacheFile", "$GENOME_REF_I#ref_genome.fa",
       "-cacheFile",   "$SAM_HEADER#sam.header"
     ] 
   }
@@ -191,133 +261,23 @@ json['strip']='''{
   }
 }'''
 
-descs['splitbams']='''strip nulls or unaligned from SAM; takes output of 'sam' as input'''
-json['splitbams']='''{
-  "Name": "split bams aligned", 
+
+descs['unaligned']='''split bams taking only unaligned (random partitioning)'''
+json['unaligned']='''{
+  "Name": "parse out only unaligned seqs", 
   "ActionOnFailure": "$ACTION_ON_FAILURE", 
   "HadoopJarStep": { 
     "Jar": "$HADOOP_JAR", 
     "Args": [ 
-      "-D", "mapred.reduce.tasks=100",
-      "-D", "mapred.text.key.partitioner.options=-k0,1",
+      "-D", "mapred.reduce.tasks=1",
       "-D", "stream.num.map.output.key.fields=2",
       "-input",	      "$INPUT",
       "-output",      "$OUTPUT",
-      "-mapper",      "perl splitAlignTags.pl -jobs 50 -header sam.header",
-      "-reducer",     "perl stripSam.pl --header sam.header --aligned",
-      "-partitioner",     "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
+      "-mapper",      "cat",
+      "-reducer",     "perl stripSam.pl --header sam.header --unaligned",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/splitAlignTags.pl#splitAlignTags.pl",
-
-      "-cacheArchive","$GENOME_REF_JAR#genomes",
-      "-cacheFile",   "$SAM_HEADER#sam.header"
-    ] 
-  }
-}'''
-
-
-
-descs['makebams']='''takes output of tag, splits based on chr & keys, remakes bam file'''
-json['makebams']='''{
-  "Name": "field split & remake bam", 
-  "ActionOnFailure": "$ACTION_ON_FAILURE", 
-  "HadoopJarStep": { 
-    "Jar": "$HADOOP_JAR", 
-    "Args": [ 
-      "-D", "mapred.reduce.tasks=20",
-      "-D", "map.output.key.value.fields.spec=0-1:2-",
-      "-D", "mapred.text.key.partitioner.options=-k1.1n,2.1n",
-      "-D", "stream.num.map.output.value.fields=3",
-      "-input",	      "$INPUT",
-      "-output",      "$OUTPUT",
-      "-mapper",     "org.apache.hadoop.mapred.lib.FieldSelectionMapReduce",
-      "-reducer",     "perl stripSam.pl --header sam.header",
-      "-partitioner", "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
-      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
-      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
-
-      "-cacheArchive","$GENOME_REF_JAR#genomes",
-      "-cacheFile",   "$SAM_HEADER#sam.header"
-    ] 
-  }
-}'''
-
-descs['tag_vcf']='''takes output of tag, splits based on chr & keys, remakes bam file'''
-json['tag_vcf']='''{
-  "Name": "field split & make vcf", 
-  "ActionOnFailure": "$ACTION_ON_FAILURE", 
-  "HadoopJarStep": { 
-    "Jar": "$HADOOP_JAR", 
-    "Args": [ 
-      "-D", "mapred.reduce.tasks=20",
-      "-D", "map.output.key.value.fields.spec=0-1:2-",
-      "-D", "mapred.text.key.partitioner.options=-k0.1n,1.1n",
-      "-D", "stream.num.map.output.value.fields=3",
-      "-input",	      "$INPUT",
-      "-output",      "$OUTPUT",
-      "-mapper",     "org.apache.hadoop.mapred.lib.FieldSelectionMapReduce",
-      "-reducer",     "perl sam_to_vcf.pl -ref ./genomes/AgamP3.I.fa -header ./sam.header -cliptag",
-      "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
-      "-cacheFile",   "$CROSSBOW_EMR/samtools64#samtools64",
-      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
-      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
-
-      "-cacheArchive","$GENOME_REF_JAR#genomes",
-      "-cacheFile",   "$SAM_HEADER#sam.header"
-    ] 
-  }
-}'''
-
-descs['tag_sam']='''takes output of tag, splits based on chr & keys, remakes bam file'''
-json['tag_sam']='''{
-  "Name": "field split & remake bam", 
-  "ActionOnFailure": "$ACTION_ON_FAILURE", 
-  "HadoopJarStep": { 
-    "Jar": "$HADOOP_JAR", 
-    "Args": [ 
-      "-D", "mapred.reduce.tasks=20",
-      "-D", "map.output.key.value.fields.spec=0,1:2-",
-      "-D", "mapred.text.key.partitioner.options=-k1.1n,0.1n",
-      "-D", "stream.num.map.output.value.fields=3",
-      "-input",	      "$INPUT",
-      "-output",      "$OUTPUT",
-      "-mapper",     "org.apache.hadoop.mapred.lib.FieldSelectionMapReduce",
-      "-reducer",     "perl stripSam.pl --header sam.header --aligned",
-      "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
-      "-cacheFile",   "$CROSSBOW_EMR/samtools64#samtools64",
-      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
-      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
-
-      "-cacheArchive","$GENOME_REF_JAR#genomes",
-      "-cacheFile",   "$SAM_HEADER#sam.header"
-    ] 
-  }
-}'''
-descs['tagim_sam']='''takes output of tag, splits based on chr & keys, remakes bam file'''
-json['tagim_sam_12']='''{
-  "Name": "field split & remake bam im", 
-  "ActionOnFailure": "$ACTION_ON_FAILURE", 
-  "HadoopJarStep": { 
-    "Jar": "$HADOOP_JAR", 
-    "Args": [ 
-      "-D", "map.output.key.value.fields.spec=1,2:2-",
-      "-D", "mapred.output.key.comparator.class=org.apache.hadoop.mapred.lib.KeyFieldBasedComparator",
-      "-D", "mapred.text.key.comparator.options=-k1.1n,2.1n",
-      "-D", "stream.num.map.output.value.fields=6",
-      "-input",	      "$INPUT",
-      "-output",      "$OUTPUT",
-      "-mapper",     "cat",
-      "-reducer",     "perl stripSam.pl --header sam.header --aligned",
-      "-partitioner",     "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
 
       "-cacheArchive","$GENOME_REF_JAR#genomes",
       "-cacheFile",   "$SAM_HEADER#sam.header"
@@ -344,207 +304,4 @@ json['checkkeys']='''{
   }
 }'''
 
-descs['tagim_sam']='''takes output of tag, splits based on chr & keys, remakes bam file'''
-json['tag_samcat_01']='''{
-  "Name": "field split & remake bam 01", 
-  "ActionOnFailure": "$ACTION_ON_FAILURE", 
-  "HadoopJarStep": { 
-    "Jar": "$HADOOP_JAR", 
-    "Args": [ 
-      "-D", "mapred.reduce.tasks=100",
-      "-D", "map.output.key.value.fields.spec=0,1:2-",
-      "-D", "mapred.text.key.partitioner.options=-k0,1",
-      "-D", "stream.num.map.output.value.fields=6",
-      "-input",	      "$INPUT",
-      "-output",      "$OUTPUT",
-      "-mapper",     "perl stripSam.pl --header sam.header --aligned",
-      "-reducer",  "cat",
-      "-partitioner",     "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
 
-      "-cacheArchive","$GENOME_REF_JAR#genomes",
-      "-cacheFile",   "$SAM_HEADER#sam.header"
-    ] 
-  }
-}'''
-
-descs['tagim_sam']='''takes output of tag, splits based on chr & keys, remakes bam file'''
-json['tag_samcat_01']='''{
-  "Name": "field split & remake bam 01", 
-  "ActionOnFailure": "$ACTION_ON_FAILURE", 
-  "HadoopJarStep": { 
-    "Jar": "$HADOOP_JAR", 
-    "Args": [ 
-      "-D", "mapred.reduce.tasks=100",
-      "-D", "map.output.key.value.fields.spec=0,1:2-",
-      "-D", "mapred.text.key.partitioner.options=-k0,1",
-      "-D", "stream.num.map.output.value.fields=6",
-      "-input",	      "$INPUT",
-      "-output",      "$OUTPUT",
-      "-mapper",     "perl stripSam.pl --header sam.header --aligned",
-      "-reducer",  "cat",
-      "-partitioner",     "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
-
-      "-cacheArchive","$GENOME_REF_JAR#genomes",
-      "-cacheFile",   "$SAM_HEADER#sam.header"
-    ] 
-  }
-}'''
-
-
-descs['tagim_sam']='''takes output of tag, splits based on chr & keys, remakes bam file'''
-json['tagim_sam_12']='''{
-  "Name": "field split & remake bam 12", 
-  "ActionOnFailure": "$ACTION_ON_FAILURE", 
-  "HadoopJarStep": { 
-    "Jar": "$HADOOP_JAR", 
-    "Args": [ 
-      "-D", "map.output.key.value.fields.spec=1,2:2-",
-      "-D", "mapred.output.key.comparator.class=org.apache.hadoop.mapred.lib.KeyFieldBasedComparator",
-      "-D", "mapred.text.key.comparator.options=-k1.1n,2.1n",
-      "-D", "mapred.text.key.partitioner.options=-k1,2",
-      "-D", "stream.num.map.output.value.fields=6",
-      "-input",	      "$INPUT",
-      "-output",      "$OUTPUT",
-      "-mapper",     "cat",
-      "-reducer",     "perl stripSam.pl --header sam.header --aligned",
-      "-partitioner",     "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
-
-      "-cacheArchive","$GENOME_REF_JAR#genomes",
-      "-cacheFile",   "$SAM_HEADER#sam.header"
-    ] 
-  }
-}'''
-
-descs['tagim_sam']='''takes output of tag, splits based on chr & keys, remakes bam file'''
-json['tagim_sam_12']='''{
-  "Name": "field split & remake bam 12", 
-  "ActionOnFailure": "$ACTION_ON_FAILURE", 
-  "HadoopJarStep": { 
-    "Jar": "$HADOOP_JAR", 
-    "Args": [ 
-      "-D", "map.output.key.value.fields.spec=1,2:2-",
-       "-D", "mapred.text.key.partitioner.options=-k1,2",
-     "-D", "mapred.output.key.comparator.class=org.apache.hadoop.mapred.lib.KeyFieldBasedComparator",
-      "-D", "mapred.text.key.comparator.options=-k1.1n,2.1n",
-      "-D", "stream.num.map.output.value.fields=6",
-      "-input",	      "$INPUT",
-      "-output",      "$OUTPUT",
-      "-mapper",     "cat",
-      "-reducer",     "perl stripSam.pl --header sam.header --aligned",
-      "-partitioner",     "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
-
-      "-cacheArchive","$GENOME_REF_JAR#genomes",
-      "-cacheFile",   "$SAM_HEADER#sam.header"
-    ] 
-  }
-}'''
-
-descs['tagim_sam']='''takes output of tag, splits based on chr & keys, remakes bam file'''
-json['tagim_sam_02']='''{
-  "Name": "field split & remake bam 02", 
-  "ActionOnFailure": "$ACTION_ON_FAILURE", 
-  "HadoopJarStep": { 
-    "Jar": "$HADOOP_JAR", 
-    "Args": [ 
-      "-D", "map.output.key.value.fields.spec=0,2:2-",
-      "-D", "mapred.output.key.comparator.class=org.apache.hadoop.mapred.lib.KeyFieldBasedComparator",
-      "-D", "mapred.text.key.comparator.options=-k0.1n,2.1n",
-      "-D", "mapred.text.key.partitioner.options=-k0,2",
-      "-D", "stream.num.map.output.value.fields=6",
-      "-input",	      "$INPUT",
-      "-output",      "$OUTPUT",
-      "-mapper",     "cat",
-      "-reducer",     "perl stripSam.pl --header sam.header --aligned",
-      "-partitioner",     "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
-
-      "-cacheArchive","$GENOME_REF_JAR#genomes",
-      "-cacheFile",   "$SAM_HEADER#sam.header"
-    ] 
-  }
-}'''
-
-descs['tagim_sam']='''takes output of tag, splits based on chr & keys, remakes bam file'''
-json['tagim_sam_21']='''{
-  "Name": "field split & remake bam 21", 
-  "ActionOnFailure": "$ACTION_ON_FAILURE", 
-  "HadoopJarStep": { 
-    "Jar": "$HADOOP_JAR", 
-    "Args": [ 
-      "-D", "map.output.key.value.fields.spec=2,1:2-",
-      "-D", "mapred.output.key.comparator.class=org.apache.hadoop.mapred.lib.KeyFieldBasedComparator",
-      "-D", "mapred.text.key.comparator.options=-k2.1n,1.1n",
-      "-D", "stream.num.map.output.value.fields=6",
-      "-input",	      "$INPUT",
-      "-output",      "$OUTPUT",
-      "-mapper",     "cat",
-      "-reducer",     "perl stripSam.pl --header sam.header --aligned",
-      "-partitioner",     "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
-
-      "-cacheArchive","$GENOME_REF_JAR#genomes",
-      "-cacheFile",   "$SAM_HEADER#sam.header"
-    ] 
-  }
-}'''
-
-
-descs['tagim_sam']='''takes output of tag, splits based on chr & keys, remakes bam file'''
-json['tagim_sam_10']='''{
-  "Name": "field split & remake bam 10", 
-  "ActionOnFailure": "$ACTION_ON_FAILURE", 
-  "HadoopJarStep": { 
-    "Jar": "$HADOOP_JAR", 
-    "Args": [ 
-      "-D", "map.output.key.value.fields.spec=1,0:2-",
-      "-D", "mapred.output.key.comparator.class=org.apache.hadoop.mapred.lib.KeyFieldBasedComparator",
-      "-D", "mapred.text.key.comparator.options=-k1.1n,0.1n",
-      "-D", "stream.num.map.output.value.fields=6",
-      "-input",	      "$INPUT",
-      "-output",      "$OUTPUT",
-      "-mapper",     "cat",
-      "-reducer",     "perl stripSam.pl --header sam.header --aligned",
-      "-partitioner",     "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
-
-      "-cacheArchive","$GENOME_REF_JAR#genomes",
-      "-cacheFile",   "$SAM_HEADER#sam.header"
-    ] 
-  }
-}'''
-
-descs['tagim_sam']='''takes output of tag, splits based on chr & keys, remakes bam file'''
-json['tagim_sam_20']='''{
-  "Name": "field split & remake bam 20", 
-  "ActionOnFailure": "$ACTION_ON_FAILURE", 
-  "HadoopJarStep": { 
-    "Jar": "$HADOOP_JAR", 
-    "Args": [ 
-      "-D", "map.output.key.value.fields.spec=2,0:2-",
-      "-D", "mapred.output.key.comparator.class=org.apache.hadoop.mapred.lib.KeyFieldBasedComparator",
-      "-D", "mapred.text.key.comparator.options=-k2.1n,0.1n",
-      "-D", "stream.num.map.output.value.fields=6",
-      "-input",	      "$INPUT",
-      "-output",      "$OUTPUT",
-      "-mapper",     "cat",
-      "-reducer",     "perl stripSam.pl --header sam.header --aligned",
-      "-partitioner",     "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
-
-      "-cacheArchive","$GENOME_REF_JAR#genomes",
-      "-cacheFile",   "$SAM_HEADER#sam.header"
-    ] 
-  }
-}'''

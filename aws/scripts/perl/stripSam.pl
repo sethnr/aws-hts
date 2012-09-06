@@ -20,15 +20,24 @@ if((!$aligned) && (!$unaligned)) {
 
 my $header = parseHeader($samhead) if $samhead;
 
+my $chrpos = 4;
+$chrpos = 2 if (!$cliptag); 
+
+
 while(<>) {
   my @F = split;
   next if (m/^\@/);
   next if (m/FAKE/g);
-  next if ((!$unaligned) && $F[4] eq '*');
-  next if ((!$aligned) && $F[4] ne '*');
+  next if ((!$unaligned) && $F[$chrpos] eq '*');
+  next if ((!$aligned) && $F[$chrpos] ne '*');
 
-  print $header if $header; 
+  die "possible malformed sam-tag file\n".$_."\n" if ($F[2] ne 'r' && $cliptag);
+  die "possible malformed sam file\n".$_."\n" if ($F[0] ne 'r' && !$cliptag);
+
+  print $header if $header;
+  
   $header = undef;
+
 
   print join("\t",@F[2..$#F])."\n" if $cliptag; 
   print join("\t",@F)."\n" unless $cliptag; 

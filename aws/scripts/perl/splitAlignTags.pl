@@ -49,7 +49,7 @@ while(<>) {
   #if start in lower flank of next one up... (i.e. might run into next block) 
   #also print in next key
   if(($rem +1)  * $split < $posn + $flank){
-    print STDOUT $chr.".".($rem+1 * $split)."\t".$posn."\t".$_;
+    print STDOUT $chr.".".($rem+1)."\t".$posn."\t".$_;
   }
 }
 

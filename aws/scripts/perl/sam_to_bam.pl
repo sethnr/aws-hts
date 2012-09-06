@@ -2,7 +2,7 @@
 use strict;
 use Getopt::Long;
 
-my $tmpfile = "sam_to_vcf_tmp";
+my $tmpfile = "sam_to_bam_tmp";
 
 my $ref = "AgamP3.fa";
 my $bowtie;
@@ -60,11 +60,6 @@ if($samhead) {
 $command = "head ".$tmpfile.".sam";
 print STDERR `$command`;
 
-#print STDERR `ls -l`;
-#print STDERR `which samtools`;
-# runcheck("tar zxvf ./genomes.tgz");
-
-  
 
 #print STDERR "converting SAM to BAM\n";
 $command = "./samtools view -Sb ".$tmpfile.".sam > ".$tmpfile.".bam";
@@ -76,28 +71,9 @@ $command = "./samtools sort ./".$tmpfile.".bam ".$tmpfile.".s";
 print STDERR "\t".$command."\n";
 runcheck($command);
 
-#print STDERR "converting BAM to pileup\n";
-#$command = "samtools mpileup -f ".$ref."  ".$tmpfile.".s.bam > ".$tmpfile.".pileup";
-#print STDERR "\t".$command."\n";
-#runcheck($command);
 
-print STDERR "converting BAM to BCF\n";
-#options: -f = reference file
-# -g = call genotypes (output bcf)
-# -D = output per-sample DP depth (high scoring bases)
-$command = "./samtools mpileup -Dgf ".$ref."  ".$tmpfile.".s.bam > ".$tmpfile.".bcf";
-print STDERR "\t".$command."\n";
-runcheck($command);
-
-my $command = "./bcftools view -g ".$tmpfile.".bcf 2> /dev/null";
-print STDERR "converting BCF to VCF\n";
-print STDERR "\t".$command."\n";
+$command = "cat ./".$tmpfile.".s.bam";
 runcheck($command);  #print to stdout
-
-$command = "head ".$tmpfile.".vcf";
-print STDERR `$command`;
-
-print STDERR "complete:\n".`wc $tmpfile.bcf`."\n";
 
 exit 0;
 

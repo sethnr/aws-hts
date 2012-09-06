@@ -39,10 +39,19 @@ read in next step from s3dir/prevName'''
     json = oxbow.commands.json[step]
     #    template = template.safe_substitute(oxbow.commands.default_args[commands[0]])
     json = fill_config_defaults(json)
-    if step in _step_args:
-      json = fill_step_defaults(json, input, s3dir+step, s3dir, _step_args[step])
+    # S3:// work around for preprocess step
+    if step == 'preprocess':
+      capS3dir = string.replace(s3dir, 's3://', 'S3://')
+      if step in _step_args:
+        json = fill_step_defaults(json, input, capS3dir+step, s3dir, _step_args[step])
+      else:
+        json = fill_step_defaults(json, input, capS3dir+step, s3dir, None)
     else:
-      json = fill_step_defaults(json, input, s3dir+step, s3dir, None)
+      if step in _step_args:
+        json = fill_step_defaults(json, input, s3dir+step, s3dir, _step_args[step])
+      else:
+        json = fill_step_defaults(json, input, s3dir+step, s3dir, None)
+
     jsons.append(json)
     input = s3dir+step
   return '[\n'+string.join(jsons,',\n')+'\n]'
@@ -71,6 +80,7 @@ nb. this can over-write previous commands further up the same json block'''
   #  print defs
   
   json = json_t.substitute(defs)
+  
   return json
 
 
