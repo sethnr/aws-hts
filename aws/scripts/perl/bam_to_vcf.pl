@@ -49,7 +49,8 @@ $command = "samtools mpileup -Dgf ".$ref."  ".$tmpfile.".s.bam > ".$tmpfile.".bc
 print STDERR "\t".$command."\n";
 system($command);
 
-my $command = "bcftools view -g ".$tmpfile.".bcf 2> /dev/null";
+# my $command = "bcftools view -g ".$tmpfile.".bcf 2> /dev/null";
+my $command = "bcftools view -gv ".$tmpfile.".bcf 2> /dev/null";
 print STDERR "converting BCF to VCF\n";
 print STDERR "\t".$command."\n";
 system($command);
