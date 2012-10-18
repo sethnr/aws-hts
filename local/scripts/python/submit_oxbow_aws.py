@@ -93,9 +93,11 @@ def parse_args(args):
   parser.add_argument('-d', '--dir', '--s3dir', dest='s3dir')
   parser.add_argument('--dryrun', action='store_true')
   parser.add_argument('--alive', action='store_true')
+  parser.add_argument('--bioc','--BioC', action='store_true')
+  parser.add_argument('--rdeps','--Rdeps', action='store_true')
   parser.add_argument('--stream')
   parser.add_argument('--num_instances', '--instances')
-  parser.add_argument('--instance_type')
+  parser.add_argument('--instance_type','--instance-type','--itype')
 
   global _args 
   _args, rem_args = parser.parse_known_args()
@@ -111,7 +113,8 @@ def parse_args(args):
   else:
     raise IOError("needs either steps or stepfile to be defined")
 
-  if _args.alive or _args.stream:
+  #  if _args.alive or _args.stream:
+  if _args.alive:
     config.ACTION_ON_FAILURE = 'CANCEL_AND_WAIT'
 
   #check output dir / s3dir is defined
@@ -165,6 +168,11 @@ def submit_emr_job(json_file):
     emr_args.append('--bootstrap-action s3://elasticmapreduce/bootstrap-actions/configure-hadoop --bootstrap-name "Configure Hadoop" --args "-s,mapred.job.reuse.jvm.num.tasks=1,-s,mapred.tasktracker.reduce.tasks.maximum=8,-s,io.sort.mb=100"')
     emr_args.append('--bootstrap-action s3://elasticmapreduce/bootstrap-actions/add-swap --bootstrap-name "Add Swap" --args "1234"')
 
+    # update R & BioConductor if needed
+    if _args.rdeps: emr_args.append('--bootstrap-action s3://hts-analyses/scripts/sh/updateRdeps.sh --bootstrap-name "Update R" --args "1234"')
+
+    if _args.bioc: emr_args.append('--bootstrap-action s3://hts-analyses/scripts/sh/installBioC.sh --bootstrap-name "install BioC" --args "1234"')
+
     emr_args.append('--enable-debugging')
     emr_args.append('--log-uri '+_args.s3dir+'log')
     emr_args.append('--name '+jobflow_name)
@@ -172,6 +180,8 @@ def submit_emr_job(json_file):
     emr_args.append('--num-instances ' + str(_args.num_instances))
 
     if _args.alive: emr_args.append('--alive')
+
+
 
   emr_args.append('--json '+json_file)
   if _args.stream:

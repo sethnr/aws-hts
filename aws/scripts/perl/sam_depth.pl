@@ -9,13 +9,18 @@ my $bowtie;
 my $samhead;
 my $cliptag;
 my $aggregate;
+# my $sw;
 
+# re: aggregate: - if working on splitsam, add aggregate option, then run through aggregator
+# will add up depths from all files into single overall depth reading
+# $sw - if $sw & $aggregate, will calculate sliding window max & counts (for AVG) for sliding window
 GetOptions(
            'fasta|ref=s' => \$ref,
 	   'tmp=s' => \$tmpfile,
 	   'bowtie' => \$bowtie,
 	   'header=s' => \$samhead,
 	   'cliptag' => \$cliptag,
+#	   'sw|slidingwindow=s' => \$sw,    # window:step
 	   'aggregate' => \$aggregate
           );
 
@@ -49,8 +54,12 @@ unless($i > 0) {
   exit 0;
 }
 
-my $command;
 
+
+
+
+# DO FILE CONVERSIONS
+my $command;
 if($samhead) {
   $command = "cat ".$samhead." ".$tmpfile.".sam > ".$tmpfile.".sam.h"; 
   print STDERR "\t".$command."\n" ;
@@ -75,13 +84,22 @@ runcheck($command);
 
 if ($aggregate) {
   $command = "./samtools depth ./".$tmpfile.".s.bam > ".$tmpfile.".depth" ;
-  runcheck($command);  #print depth to stdout
+  runcheck($command);  #print depth to file
   open(DEPTH,"<".$tmpfile.".depth");
   while(<DEPTH>) {
     my ($chr,$pos,$dep) = split;
     print STDOUT "LongValueSum:".$chr.".".$pos."\t".$dep."\n";
+#    if($sw) {
+#      foreach my $window (@{$windows{$chr}}){
+#			 if($pos >= $window & $pos <= $step){
+#			   print STDOUT "LongValueSum:".$chr.".".$window."-".($window+$step)."\t".$dep."\n";
+#			   print STDOUT "UniqValueCount:".$chr.".".$window."-".($window+$step)."\t".$pos."\n";
+#			 }
+#		       }
+#    }
   }
 }
+
 else{
   $command = "./samtools depth ./".$tmpfile.".s.bam" unless $aggregate;
   runcheck($command);  #print depth to stdout

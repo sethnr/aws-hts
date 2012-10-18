@@ -6,10 +6,13 @@ my $ref;
 my $samhead;
 my $flank = 80;
 my $no_jobs=30;
+my $filetype= "sam";
+
 GetOptions(
            'jobs=s' => \$no_jobs,
 	   'header=s' => \$samhead,
 	   'flank=s' => \$flank,
+	   'input=s' => \$filetype
           );
 
 

@@ -13,6 +13,26 @@ json = {}
 descs = {}
 default_args = {}
 
+#split paired-end reads
+descs['splitpe'] = '''split paired-end reads into separate files'''
+json['splitpe'] = '''{
+  "Name": "split paired-end reads",
+  "ActionOnFailure": "$ACTION_ON_FAILURE",
+  "HadoopJarStep": {
+    "Jar": "$HADOOP_JAR",
+    "Args": [
+      "-D", "mapred.reduce.tasks=1",
+      "-input",       "$INPUT",
+      "-output",      "${S3DIR}null",
+      "-mapper",      "./splitPairedEndReads.pl $OUTPUT",
+      "-inputformat", "org.apache.hadoop.mapred.lib.NLineInputFormat",
+   
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/splitPairedEndReads.pl#splitPairedEndReads.pl",
+      $OPTS
+    ]
+  }
+}'''
+
 # PREPROCESS
 descs['preprocess'] = '''take manifest of sam output files, split into smaller chunks and tgz for processing'''
 json['preprocess'] = '''{
@@ -196,7 +216,6 @@ json['samdepth']='''{
   "HadoopJarStep": { 
     "Jar": "$HADOOP_JAR", 
     "Args": [ 
-      "-D", "mapred.reduce.tasks=0",
       "-input",	      "$INPUT",
       "-output",      "$OUTPUT",
       "-mapper",      "perl sam_depth.pl --aggregate",
@@ -212,12 +231,115 @@ json['samdepth']='''{
   }
 }'''
 
+descs['samdepthgrep']='''takes output of sam / splitsam, calculates depth (samtools), sum by posn (mapred:aggregate) '''
+json['samdepthgrep']='''{
+  "Name": "read depth", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-input",	      "$INPUT",
+      "-output",      "$OUTPUT",
+      "-mapper",      "perl sam_depth.pl --aggregate",
+      "-reducer",     "grep -e 0.10076461 -e 0.10078610 -e 6.222023",
+      "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_depth.pl#sam_depth.pl",
+
+      "-cacheFile", "$GENOME_REF_I#ref_genome.fa",
+      "-cacheFile",   "$SAM_HEADER#sam.header"
+    ] 
+  }
+}'''
+
+
+descs['depthseg']='''segment depth values via bioconductor / fastseg '''
+json['depthseg']='''{
+  "Name": "fastseg depth", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.map.tasks=400",
+      "-D", "mapred.reduce.tasks=1",
+      "-input",	      "$INPUT",
+      "-output",      "$OUTPUT",
+      "-mapper",      "R --slave --vanilla -f fastseg_depth.R",
+      "-reducer",     "R --slave --vanilla -f fastseg_depth.R --args minseg=1000",
+      "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
+      "-cacheFile",   "s3n://hts-analyses/scripts/R/fastseg_depth.R#fastseg_depth.R",
+
+      "-cacheFile", "$GENOME_REF_I#ref_genome.fa",
+      "-cacheFile",   "$SAM_HEADER#sam.header"
+    ] 
+  }
+}'''
+
+descs['depthwindow']='''chunk values by bases and run sliding window '''
+json['depthwindow']='''{
+  "Name": "sliding window mean (depth) $S3DIR", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=100",
+      "-input",	      "$INPUT",
+      "-output",      "$OUTPUT",
+      "-mapper",      "perl splitByChunk.pl --chunk 1m -flank 10k",
+      "-reducer",     "R --slave --vanilla -f slidingWin_depth.R --args window=10000 step=1000 fillBases=T " ,
+      "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
+      "-cacheFile",   "s3n://hts-analyses/scripts/R/slidingWin_depth.R#slidingWin_depth.R",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/splitByChunk.pl#splitByChunk.pl",
+
+    ] 
+  }
+}'''
+
+descs['meanbyfeat']='''chunk values by bases and run sliding window '''
+json['meanbyfeat']='''{
+  "Name": "feature mean $S3DIR", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=100",
+      "-input",	      "$INPUT",
+      "-output",      "$OUTPUT",
+      "-mapper",      "perl splitByFeature.pl --feats gene_groups.txt",
+      "-reducer",     "R --slave --vanilla -f meanByBlock_depth.R" ,
+      "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
+      "-cacheFile",   "s3n://hts-analyses/scripts/R/meanByBlock_depth.R#meanByBlock_depth.R",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/splitByFeature2.pl#splitByFeature.pl",
+      "-cacheFile",   "s3n://hts-analyses/resources/ortho_gene_groups.txt#gene_groups.txt",
+
+    ] 
+  }
+}'''
+
+
+descs['uniqwin']='''chunk values by bases and run sliding window '''
+json['uniqwin']='''{
+  "Name": "remove tag from chr name, get unique windows $S3DIR", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=6",
+      "-input",	      "$INPUT",
+      "-output",      "$INPUTuniq",
+      "-mapper",      "perl clipChunkTag.pl'",
+      "-reducer",     "uniq",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/clipChunkTag.pl#clipChunkTag.pl",
+    ] 
+  }
+}'''
 
 
 
 descs['vcf']='''use samtools (mpileup) to create vcf file; takes output of 'sam' as input'''
 json['vcf']='''{
-  "Name": "sam to vcf (samtools)", 
+  "Name": "sam to vcf (samtools) $S3DIR", 
   "ActionOnFailure": "$ACTION_ON_FAILURE", 
   "HadoopJarStep": { 
     "Jar": "$HADOOP_JAR", 
@@ -225,7 +347,7 @@ json['vcf']='''{
       "-D", "mapred.reduce.tasks=0",
       "-input",	      "$INPUT",
       "-output",      "$OUTPUT",
-      "-mapper",      "perl sam_to_vcf.pl -cliptag -ref ./ref_genome.fa",
+      "-mapper",      "perl sam_to_vcf.pl -ref ./ref_genome.fa",
       "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
@@ -264,7 +386,7 @@ json['strip']='''{
 
 descs['unaligned']='''split bams taking only unaligned (random partitioning)'''
 json['unaligned']='''{
-  "Name": "parse out only unaligned seqs", 
+  "Name": "parse out only unaligned seqs $S3DIR", 
   "ActionOnFailure": "$ACTION_ON_FAILURE", 
   "HadoopJarStep": { 
     "Jar": "$HADOOP_JAR", 
