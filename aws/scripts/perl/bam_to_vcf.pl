@@ -18,6 +18,7 @@ sub _run_command {
 }
 
 
+<<<<<<< HEAD
 while(<>) {
   print STDERR $_;
   my @files = split;
@@ -37,3 +38,31 @@ while(<>) {
   _run_command("perl vcfs_merge.pl ".join(" ",@samples));
 }
   exit 0;
+=======
+print STDERR "sorting bam files\n";
+$command = "samtools sort ./".$tmpfile.".bam ".$tmpfile.".s";
+print STDERR "\t".$command."\n";
+system($command);
+
+#print STDERR "converting BAM to pileup\n";
+#$command = "samtools mpileup -f ".$ref."  ".$tmpfile.".s.bam > ".$tmpfile.".pileup";
+#print STDERR "\t".$command."\n";
+#system($command);
+
+print STDERR "converting BAM to BCF\n";
+#options: -f = reference file
+# -g = call genotypes (output bcf)
+# -D = output per-sample DP depth (high scoring bases)
+$command = "samtools mpileup -Dgf ".$ref."  ".$tmpfile.".s.bam > ".$tmpfile.".bcf";
+print STDERR "\t".$command."\n";
+system($command);
+
+# my $command = "bcftools view -g ".$tmpfile.".bcf 2> /dev/null";
+my $command = "bcftools view -gv ".$tmpfile.".bcf 2> /dev/null";
+print STDERR "converting BCF to VCF\n";
+print STDERR "\t".$command."\n";
+system($command);
+print STDERR "complete:\n".`wc $tmpfile.bcf`."\n";
+
+exit 0;
+>>>>>>> 3e00d747d99b01163e873ce4aaa3c7e94d1a18d7
