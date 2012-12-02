@@ -1,1 +1,1 @@
-while(<>) {print $_ unless (m/^\@/ || m/FAKE/g);}
+sam_strip_header.pl

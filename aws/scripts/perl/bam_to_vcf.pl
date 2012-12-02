@@ -11,48 +11,29 @@ GetOptions(
 	   'tmp=s' => \$tmpfile
           );
 
-
-
-
-open(TMP,">".$tmpfile.".bam");
-
-print STDERR "dumping input into file\n";
-while(<>){
-  print TMP "$_";
+sub _run_command {
+  my $command = shift;
+  print STDERR "\t".$command."\n";
+  system($command);
 }
-close(TMP);
 
-my $command;
 
-print STDERR `find . `;
+while(<>) {
+  print STDERR $_;
+  my @files = split;
+  my @samples = ();
+  foreach my $file (@files) {
+    my ($tmpfile, $getfile) = split('::',$file);
+    print STDERR $getfile." -> ".$tmpfile."\n";
+    _run_command("s3cmd get ".$getfile." ".$tmpfile);    
+    _run_command("samtools view -Sb ".$tmpfile." > ".$tmpfile.".bam");
+    _run_command("samtools sort ./".$tmpfile.".bam ".$tmpfile.".s");
+    _run_command("samtools mpileup -Dgf ".$ref."  ".$tmpfile.".s.bam > ".$tmpfile.".bcf");
+    _run_command("bcftools view -g ".$tmpfile.".bcf 2> /dev/null > ".$tmpfile.".vcf");
+    $tmpfile .= ".vcf";
+    push(@samples, $tmpfile);
+  }
 
-#print STDERR "converting SAM to BAM\n";
-#$command = "samtools view -Sb ".$tmpfile.".sam > ".$tmpfile.".bam";
-# print STDERR "\t".$command."\n";
-#system($command);
-
-print STDERR "sorting bam files\n";
-$command = "samtools sort ./".$tmpfile.".bam ".$tmpfile.".s";
-print STDERR "\t".$command."\n";
-system($command);
-
-#print STDERR "converting BAM to pileup\n";
-#$command = "samtools mpileup -f ".$ref."  ".$tmpfile.".s.bam > ".$tmpfile.".pileup";
-#print STDERR "\t".$command."\n";
-#system($command);
-
-print STDERR "converting BAM to BCF\n";
-#options: -f = reference file
-# -g = call genotypes (output bcf)
-# -D = output per-sample DP depth (high scoring bases)
-$command = "samtools mpileup -Dgf ".$ref."  ".$tmpfile.".s.bam > ".$tmpfile.".bcf";
-print STDERR "\t".$command."\n";
-system($command);
-
-my $command = "bcftools view -g ".$tmpfile.".bcf 2> /dev/null";
-print STDERR "converting BCF to VCF\n";
-print STDERR "\t".$command."\n";
-system($command);
-print STDERR "complete:\n".`wc $tmpfile.bcf`."\n";
-
-exit 0;
+  _run_command("perl vcfs_merge.pl ".join(" ",@samples));
+}
+  exit 0;

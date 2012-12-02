@@ -6,9 +6,9 @@ import re
 import argparse
 import string
 import tempfile
-import subprocess
-import shlex
-import commands 
+import subprocess  # pass subcommands to system
+import shlex   # get token, unix-style lexical analysis
+               #import commands (deprecated in favour of subprocess)
 
 from oxbow import config 
 import oxbow.commands
@@ -95,6 +95,7 @@ def parse_args(args):
   parser.add_argument('--alive', action='store_true')
   parser.add_argument('--bioc','--BioC', action='store_true')
   parser.add_argument('--rdeps','--Rdeps', action='store_true')
+  parser.add_argument('--s3','--s3install', action='store_true')
   parser.add_argument('--stream')
   parser.add_argument('--num_instances', '--instances')
   parser.add_argument('--instance_type','--instance-type','--itype')
@@ -164,6 +165,7 @@ def submit_emr_job(json_file):
   if not _args.stream:
     emr_args.append('--create')
 
+    emr_args.append('--bootstrap-action s3://hts-analyses/scripts/sh/setup.sh --bootstrap-name "Setup paths & libs" ')
     emr_args.append('--bootstrap-action s3://elasticmapreduce/bootstrap-actions/configurations/latest/memory-intensive --bootstrap-name "Set memory-intensive mode" ')
     emr_args.append('--bootstrap-action s3://elasticmapreduce/bootstrap-actions/configure-hadoop --bootstrap-name "Configure Hadoop" --args "-s,mapred.job.reuse.jvm.num.tasks=1,-s,mapred.tasktracker.reduce.tasks.maximum=8,-s,io.sort.mb=100"')
     emr_args.append('--bootstrap-action s3://elasticmapreduce/bootstrap-actions/add-swap --bootstrap-name "Add Swap" --args "1234"')
@@ -172,6 +174,8 @@ def submit_emr_job(json_file):
     if _args.rdeps: emr_args.append('--bootstrap-action s3://hts-analyses/scripts/sh/updateRdeps.sh --bootstrap-name "Update R" --args "1234"')
 
     if _args.bioc: emr_args.append('--bootstrap-action s3://hts-analyses/scripts/sh/installBioC.sh --bootstrap-name "install BioC" --args "1234"')
+
+    if _args.s3: emr_args.append('--bootstrap-action s3://hts-analyses/scripts/sh/installS3cmd.sh --bootstrap-name "install S3" --args "1234"')
 
     emr_args.append('--enable-debugging')
     emr_args.append('--log-uri '+_args.s3dir+'log')

@@ -1,6 +1,1 @@
-#!/usr/bin/perl
-
-while(<>) {
-  $_ =~ s/^(\d+)\.(\d+)/$1/gi;
-  print $_;
-}
+clip_chunk_tag.pl

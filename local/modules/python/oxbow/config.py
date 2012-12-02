@@ -9,12 +9,14 @@ ACTION_ON_FAILURE = 'TERMINATE_JOB_FLOW'
 HADOOP_JAR = '/home/hadoop/contrib/streaming/hadoop-0.20-streaming.jar'
 CROSSBOW_EMR = 's3n://crossbow-emr/1.1.2'
 GENOME_REF_I = 's3n://hts-analyses/genomes/AgamP3.I.fa'
-GENOME_REF = 'AgamP3.fa'
+GENOME_REF = 's3n://hts-analyses/genomes/AgamP3.fa'
 GENOME_REF_JAR = 's3n://hts-analyses/bowtie_jars/AgamP3.jar'
 SAM_HEADER = 's3n://hts-analyses/resources/AgamP3.header'
 EMR_COMMAND = '/Users/Seth/Work/EC2/emrtools/elastic-mapreduce'
 NO_SAM_FILES = 200
-NO_SAM_TASKS = 210
+CHUNK_SIZE = '1.5m'
+FLANK_SIZE = '10k'
+NO_SAM_TASKS = 200
 
 
 def get_conf_hash():

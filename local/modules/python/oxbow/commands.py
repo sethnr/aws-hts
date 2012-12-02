@@ -13,26 +13,6 @@ json = {}
 descs = {}
 default_args = {}
 
-#split paired-end reads
-descs['splitpe'] = '''split paired-end reads into separate files'''
-json['splitpe'] = '''{
-  "Name": "split paired-end reads",
-  "ActionOnFailure": "$ACTION_ON_FAILURE",
-  "HadoopJarStep": {
-    "Jar": "$HADOOP_JAR",
-    "Args": [
-      "-D", "mapred.reduce.tasks=1",
-      "-input",       "$INPUT",
-      "-output",      "${S3DIR}null",
-      "-mapper",      "./splitPairedEndReads.pl $OUTPUT",
-      "-inputformat", "org.apache.hadoop.mapred.lib.NLineInputFormat",
-   
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/splitPairedEndReads.pl#splitPairedEndReads.pl",
-      $OPTS
-    ]
-  }
-}'''
-
 # PREPROCESS
 descs['preprocess'] = '''take manifest of sam output files, split into smaller chunks and tgz for processing'''
 json['preprocess'] = '''{
@@ -106,84 +86,73 @@ json['sam'] = '''{
 }'''
 
 
-# ALIGN WITH Bowtie (sam)
-#descs['samtag'] = '''aligns seqs in tgz files using samtools'''
-json['samtag'] = '''{
-  "Name": "Align with Bowtie (sam) and tag", 
-  "ActionOnFailure": "$ACTION_ON_FAILURE", 
-  "HadoopJarStep": { 
-    "Jar": "$HADOOP_JAR", 
-    "Args": [ 
-      "-D", "mapred.reduce.tasks=20",
-      "-D", "mapred.text.key.partitioner.options=-k3,4",
-      "-D", "stream.num.map.output.key.fields=4",
-      "-input",       "$INPUT",
-      "-output",      "$OUTPUT",
-      "-mapper",      "$CROSSBOW_EMR/Align.pl  --discard-reads=0 --ref=$GENOME_REF_JAR --destdir=/mnt/16326 --partlen=1000000 --qual=phred33 --truncate=0  -- --partition 1000000 -t --hadoopout --startverbose -M 1 --sam",
-      "-reducer",     "perl splitAlignTags.pl -jobs 50 -header ./sam.header",
-      "-partitioner",     "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
-      "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
-      "-cacheFile",   "$CROSSBOW_EMR/Get.pm#Get.pm",
-      "-cacheFile",   "$CROSSBOW_EMR/Counters.pm#Counters.pm",
-      "-cacheFile",   "$CROSSBOW_EMR/Util.pm#Util.pm",
-      "-cacheFile",   "$CROSSBOW_EMR/Tools.pm#Tools.pm",
-      "-cacheFile",   "$CROSSBOW_EMR/AWS.pm#AWS.pm",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/splitAlignTags.pl#splitAlignTags.pl",
-    "-cacheFile",     "$SAM_HEADER#sam.header"
-     $OPTS
-    ]
-  }
-}'''
 
-
-#default_args['align'] = {'input':'s3://ngousso/full/preproc',
-#                     'output':'s3://ngousso/full/sam'}
-
-descs['tag']='''use custom perl script to strip-non-aligned seqs out of file,
-tag with index for sorting by mapreduce'''
-json['tag']='''{
-  "Name": "strip non-matched lines & group-tag", 
-  "ActionOnFailure": "$ACTION_ON_FAILURE", 
-  "HadoopJarStep": { 
-    "Jar": "$HADOOP_JAR", 
-    "Args": [ 
-      "-input",       "$INPUT",
-      "-output",      "$OUTPUT",
-      "-mapper",     	"perl splitAlignTags.pl -jobs $NO_SAM_FILES -header ./sam.header",
-      "-cacheFile",   	"s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
-      "-cacheFile",   	"s3n://hts-analyses/scripts/perl/stripUnaligned.pl#stripUnaligned.pl",
-      "-cacheFile",   	"s3n://hts-analyses/scripts/perl/splitAlignTags.pl#splitAlignTags.pl",
-      "-cacheFile",   "$SAM_HEADER#sam.header"
-    ] 
-  }
-}'''
-
-
-descs['splitsam']='''takes output of tag, splits based on chr & keys, remakes bam file'''
-json['splitsam']='''{
-  "Name": "field split & remake sam", 
+descs['samsplit']='''takes output of sam splits based on chr & keys, remakes bam file'''
+json['samsplit']='''{
+  "Name": "field split & remake sam $S3DIR", 
   "ActionOnFailure": "$ACTION_ON_FAILURE", 
   "HadoopJarStep": { 
     "Jar": "$HADOOP_JAR", 
     "Args": [ 
       "-D", "mapred.reduce.tasks=$NO_SAM_TASKS",
-      "-D", "map.output.key.value.fields.spec=0:2-",
-      "-D", "mapred.text.key.partitioner.options=-k0",
-      "-D", "stream.num.map.output.value.fields=2",
       "-input",	      "$INPUT",
       "-output",      "$OUTPUT",
-      "-mapper",      "perl splitAlignTags.pl -jobs $NO_SAM_FILES -header sam.header",
-      "-reducer",     "perl stripSam.pl --header sam.header --aligned --cliptag",
-      "-partitioner", "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/splitAlignTags.pl#splitAlignTags.pl",
+      "-mapper",      "perl sam_split_by_chunk.pl --chunk 1.5m -flank 10k ",
+      "-reducer",     "perl sam_strip.pl --header sam.header --aligned --cliptag",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#stripSam.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#sam_strip.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_split_by_chunk.pl#sam_split_by_chunk.pl",
 
       "-cacheArchive","$GENOME_REF_JAR#genomes",
       "-cacheFile",   "$SAM_HEADER#sam.header"
     ] 
   }
 }'''
+
+descs['bamsplit']='''takes bam, splits based on chr & keys, remakes sam file'''
+json['bamsplit']='''{
+  "Name": "field split & remake sam $S3DIR", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.map.tasks=1",
+      "-D", "mapred.reduce.tasks=$NO_SAM_TASKS",
+      "-input",	      "$INPUT",
+      "-output",      "$OUTPUT",
+      "-mapper",      "perl bam_split_by_chunk.pl --chunk 1.5m -flank 10k ",
+      "-reducer",     "perl sam_strip.pl --header sam.header --aligned --cliptag",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#stripSam.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#sam_strip.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/bam_split_by_chunk.pl#bam_split_by_chunk.pl",
+
+      "-cacheArchive","$GENOME_REF_JAR#genomes",
+      "-cacheFile",   "$SAM_HEADER#sam.header"
+    ] 
+  }
+}'''
+descs['gbamsplit']='''takes bam, splits based on chr & keys, remakes sam file'''
+json['gbamsplit']='''{
+  "Name": "field split & remake sam $S3DIR", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=$NO_SAM_TASKS",
+      "-input",	      "$INPUT",
+      "-output",      "$OUTPUT",
+      "-mapper",      "perl bam_split_by_chunk.pl --chunk 1.5m -flank 10k -gz",
+      "-reducer",     "perl sam_strip.pl --header sam.header --aligned --cliptag",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#stripSam.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#sam_strip.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/bam_split_by_chunk.pl#bam_split_by_chunk.pl",
+
+      "-cacheArchive","$GENOME_REF_JAR#genomes",
+      "-cacheFile",   "$SAM_HEADER#sam.header"
+    ] 
+  }
+}'''
+
 
 
 descs['samtobam']='''takes output of sam / splitsam, makes bam file (no reduce)'''
@@ -290,7 +259,7 @@ json['depthwindow']='''{
       "-reducer",     "R --slave --vanilla -f slidingWin_depth.R --args window=10000 step=1000 fillBases=T " ,
       "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
       "-cacheFile",   "s3n://hts-analyses/scripts/R/slidingWin_depth.R#slidingWin_depth.R",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/splitByChunk.pl#splitByChunk.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/cpv_split_by_chunk.pl#splitByChunk.pl",
 
     ] 
   }
@@ -310,7 +279,7 @@ json['meanbyfeat']='''{
       "-reducer",     "R --slave --vanilla -f meanByBlock_depth.R" ,
       "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
       "-cacheFile",   "s3n://hts-analyses/scripts/R/meanByBlock_depth.R#meanByBlock_depth.R",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/splitByFeature2.pl#splitByFeature.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/cpv_split_by_feature2.pl#splitByFeature.pl",
       "-cacheFile",   "s3n://hts-analyses/resources/ortho_gene_groups.txt#gene_groups.txt",
 
     ] 
@@ -330,7 +299,7 @@ json['uniqwin']='''{
       "-output",      "$INPUTuniq",
       "-mapper",      "perl clipChunkTag.pl'",
       "-reducer",     "uniq",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/clipChunkTag.pl#clipChunkTag.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/misc/clip_chunk_tag.pl#clipChunkTag.pl",
     ] 
   }
 }'''
@@ -351,7 +320,6 @@ json['vcf']='''{
       "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
 
       "-cacheFile", "$GENOME_REF_I#ref_genome.fa",
@@ -426,4 +394,73 @@ json['checkkeys']='''{
   }
 }'''
 
+
+descs['make_manifest']='''make manifest of files for each sample folder'''
+json['make_manifest']='''{
+  "Name": "make_manifest", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=100",
+      "-D", "mapred.text.key.partitioner.options=-k1,2",
+      "-D", "stream.num.map.output.key.fields=3",
+      "-input",	      "$S3DIR/control/sample_folder_list.txt",
+      "-output",      "$S3DIR/control/sample_manifest.txt",
+      "-mapper",      "perl s3_make_sample_manifest.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/s3_make_sample_manifest.pl#s3_make_sample_manifest.pl"
+    ] 
+  }
+}'''
+
+descs['combined_vcf']='''make manifest of files for each sample folder'''
+json['combined_vcf']='''{
+  "Name": "combined_vcf", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-D", "mapred.map.tasks=$NO_SAM_TASKS",
+      "-input",      "$INPUT",
+      "-output",     "$OUTPUT",
+      "-mapper",      "perl sams_to_vcf.pl -ref ./ref_genome.fa -vars-only",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/vcf_prep_for_merge.pl#vcf_prep_for_merge.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/vcfs_merge.pl#vcfs_merge.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sams_to_vcf.pl#sams_to_vcf.pl",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/vcf-merge#vcf-merge",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
+      "-cacheFile","s3n://hts-analyses/software/s3cmd-1.1.0.tgz#s3cmd.tgz",
+      "-cacheFile","s3n://hts-analyses/software/tabix/tabix#tabix",
+      "-cacheFile","s3n://hts-analyses/software/tabix/bgzip#bgzip",
+      "-cacheFile","s3n://hts-analyses/lib/vcfPerlMods.tgz#vcfPerlMods.tgz",
+      "-cacheFile", "$GENOME_REF#ref_genome.fa"
+    ] 
+  }
+}'''
+
+descs['theta']='''make manifest of files for each sample folder'''
+json['theta']='''{
+"Name": "vcf theta $S3DIR ", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-input",      "$INPUT",
+      "-output",     "$OUTPUT",
+      "-mapper",      "R --slave --vanilla -f vcf_slidingWin_theta.R --args window=10000 step=1000 fillBases=T pool_size=20" ,
+      "-cacheFile",   "s3n://hts-analyses/scripts/R/vcf_slidingWin_theta.R#vcf_slidingWin_theta.R",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/vcf-merge#vcf-merge",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
+      "-cacheFile","s3n://hts-analyses/software/s3cmd-1.1.0.tgz#s3cmd.tgz",
+      "-cacheFile","s3n://hts-analyses/software/tabix/tabix#tabix",
+      "-cacheFile","s3n://hts-analyses/software/tabix/bgzip#bgzip",
+      "-cacheFile","s3n://hts-analyses/lib/vcfPerlMods.tgz#vcfPerlMods.tgz",
+      "-cacheFile", "$GENOME_REF_I#ref_genome.fa"
+    ] 
+  }
+}'''
 

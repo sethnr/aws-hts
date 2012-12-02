@@ -22,4 +22,4 @@
 
 # install bioC packages
 sudo R -e "options(repos=structure(c(CRAN=\"http://cran.ma.imperial.ac.uk/\"))); install.packages(\"zoo\")"
-sudo R -e "source('http://bioconductor.org/biocLite.R');biocLite(character(0), ask=FALSE);biocLite(c(\"fastseg\",\"snpStats\"))"
+sudo R -e "source('http://bioconductor.org/biocLite.R');biocLite(character(0), ask=FALSE);biocLite(c(\"fastseg\",\"snpStats\",\"ShortRead\",\"GGtools\"))"
