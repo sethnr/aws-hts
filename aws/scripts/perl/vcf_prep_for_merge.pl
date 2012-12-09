@@ -1,4 +1,4 @@
-#!/usr/bin/perl 
+#!/usr/bin/perl -i
 
 use Getopt::Long;
 # take input of VCF file from mpileup 
@@ -43,6 +43,9 @@ while(<>) {
 	  splice(@keys, $i, 1);
 	  splice(@vals, $i, 1);
 	}
+      }
+      if($keys[$i] eq 'GT' & $vals[$i] eq '.') {
+	$vals[$i] eq '0|0';
       }
      }
     

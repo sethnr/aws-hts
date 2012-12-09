@@ -97,7 +97,7 @@ json['samsplit']='''{
       "-D", "mapred.reduce.tasks=$NO_SAM_TASKS",
       "-input",	      "$INPUT",
       "-output",      "$OUTPUT",
-      "-mapper",      "perl sam_split_by_chunk.pl --chunk 1.5m -flank 10k ",
+      "-mapper",      "perl sam_split_by_chunk.pl --chunk $CHUNK_SIZE -flank $FLANK_SIZE ",
       "-reducer",     "perl sam_strip.pl --header sam.header --aligned --cliptag",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#stripSam.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#sam_strip.pl",
@@ -120,7 +120,7 @@ json['bamsplit']='''{
       "-D", "mapred.reduce.tasks=$NO_SAM_TASKS",
       "-input",	      "$INPUT",
       "-output",      "$OUTPUT",
-      "-mapper",      "perl bam_split_by_chunk.pl --chunk 1.5m -flank 10k ",
+      "-mapper",      "perl bam_split_by_chunk.pl --chunk $CHUNK_SIZE -flank $FLANK_SIZE ",
       "-reducer",     "perl sam_strip.pl --header sam.header --aligned --cliptag",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#stripSam.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#sam_strip.pl",
@@ -141,7 +141,7 @@ json['gbamsplit']='''{
       "-D", "mapred.reduce.tasks=$NO_SAM_TASKS",
       "-input",	      "$INPUT",
       "-output",      "$OUTPUT",
-      "-mapper",      "perl bam_split_by_chunk.pl --chunk 1.5m -flank 10k -gz",
+      "-mapper",      "perl bam_split_by_chunk.pl --chunk $CHUNK_SIZE -flank $FLANK_SIZE -gz",
       "-reducer",     "perl sam_strip.pl --header sam.header --aligned --cliptag",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#stripSam.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#sam_strip.pl",
@@ -415,16 +415,16 @@ json['make_manifest']='''{
 
 descs['combined_vcf']='''make manifest of files for each sample folder'''
 json['combined_vcf']='''{
-  "Name": "combined_vcf", 
+  "Name": "combined_vcf $S3DIR", 
   "ActionOnFailure": "$ACTION_ON_FAILURE", 
   "HadoopJarStep": { 
     "Jar": "$HADOOP_JAR", 
     "Args": [ 
+      "-D", "mapred.map.tasks=100",
       "-D", "mapred.reduce.tasks=0",
-      "-D", "mapred.map.tasks=$NO_SAM_TASKS",
       "-input",      "$INPUT",
-      "-output",     "$OUTPUT",
-      "-mapper",      "perl sams_to_vcf.pl -ref ./ref_genome.fa -vars-only",
+      "-output",     "$S3DIR/null",
+      "-mapper",      "perl sams_to_vcf.pl -ref ./ref_genome.fa -vars-only -outdir /hts-outputs/Fd09/combined_vcf -chunk $CHUNK_SIZE -no-dups",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/vcf_prep_for_merge.pl#vcf_prep_for_merge.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/vcfs_merge.pl#vcfs_merge.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/sams_to_vcf.pl#sams_to_vcf.pl",
@@ -448,6 +448,7 @@ json['theta']='''{
     "Jar": "$HADOOP_JAR", 
     "Args": [ 
       "-D", "mapred.reduce.tasks=0",
+      "-D", "mapred.tasktracker.map.tasks.maximum=$MAX_TASKS",
       "-input",      "$INPUT",
       "-output",     "$OUTPUT",
       "-mapper",      "R --slave --vanilla -f vcf_slidingWin_theta.R --args window=10000 step=1000 fillBases=T pool_size=20" ,

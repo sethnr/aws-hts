@@ -141,16 +141,18 @@ def parse_step_defaults(args):
   rem_args = []
   while len(args):
     arg = args.pop(0)
+    print arg+"!\n"
     m = re.match('--(\w+)\.(\w+)=*(\S*)', arg)
     if m:
       step = m.group(1)
       key = m.group(2)
       if m.group(3): val = m.group(3)
       else: val = args.pop(0)
-      # print step+": "+key+" > "+val
+      print step+": "+key+" > "+val
       if step not in _step_args:
         _step_args[step] = {}
       _step_args[step][key] = val
+      print _step_args[step][key]
     else:
       rem_args.append(arg)  
   return rem_args

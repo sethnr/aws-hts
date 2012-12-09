@@ -13,11 +13,11 @@ GENOME_REF = 's3n://hts-analyses/genomes/AgamP3.fa'
 GENOME_REF_JAR = 's3n://hts-analyses/bowtie_jars/AgamP3.jar'
 SAM_HEADER = 's3n://hts-analyses/resources/AgamP3.header'
 EMR_COMMAND = '/Users/Seth/Work/EC2/emrtools/elastic-mapreduce'
-NO_SAM_FILES = 200
-CHUNK_SIZE = '1.5m'
+NO_SAM_FILES = 550
+CHUNK_SIZE = '0.5m'
 FLANK_SIZE = '10k'
-NO_SAM_TASKS = 200
-
+NO_SAM_TASKS = 550
+MAX_TASKS=25
 
 def get_conf_hash():
   mod_dict = sys.modules[__name__].__dict__
