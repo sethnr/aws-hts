@@ -424,7 +424,7 @@ json['combined_vcf']='''{
       "-D", "mapred.reduce.tasks=0",
       "-input",      "$INPUT",
       "-output",     "$S3DIR/null",
-      "-mapper",      "perl sams_to_vcf.pl -ref ./ref_genome.fa -vars-only -outdir /hts-outputs/Fd09/combined_vcf -chunk $CHUNK_SIZE -no-dups",
+      "-mapper",      "perl sams_to_vcf.pl -ref ./ref_genome.fa -vars-only -outdir /hts-outputs/Fd03/combined_vcf -chunk $CHUNK_SIZE -no-dups",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/vcf_prep_for_merge.pl#vcf_prep_for_merge.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/vcfs_merge.pl#vcfs_merge.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/sams_to_vcf.pl#sams_to_vcf.pl",

@@ -92,7 +92,7 @@ while(<>) {
   }
 
 #  _run_command("perl vcfs_merge.pl ".$vcfs);
-  _run_command("./vcf-merge ".$noDups." -s ".$vcfs." 1> combined.tmp.vcf 2>/dev/null");
+  _run_command("./vcf-merge ".$noDups." -s ".$vcfs." > combined.tmp.vcf");
 my @header;
 my ($firstPos, $lastPos, $lastChr);
 $lastPos = -1;
@@ -114,14 +114,14 @@ $lastPos = -1;
       }
       unless($firstPos || ($F[0] =~ m/^#.*/)) {$firstPos = $F[1];}
       if ($lastPos > -1) {
-	if ((($lastPos + $chunk) < $F[1]) || ($lastChr != $F[0])) {
+	if ((($lastPos + $chunk) < $F[1]) || ($lastChr ne $F[0])) {
 	  print STDERR "lastPos = ".$lastPos." chunk = ".$chunk." F1 = ".$F[1]." lastChr = ".$lastChr." F0 = ".$F[0]."\n";
 	  my $out_file = $lastChr.".".$firstPos.".".$lastPos.".vcf";
 	  _run_command("./s3cmd/s3cmd --config ./s3cmd/s3cmd_config put ./combined.vcf  s3:/".$out_dir."/".$out_file);    
 	  close(OUTFILE);
 	  print STDERR "found break larger than ".$chunk." splitting into two files\n";
 	  open(OUTFILE,">combined.vcf");
-	  print OUTFILE (join("\n",@header));
+	  print OUTFILE join("\n",@header)."\n";
 	  $firstPos = $F[1];
 	  $lastChr = $F[0];
 	}
