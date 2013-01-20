@@ -13,7 +13,7 @@ my $step;
 my $chunk;
 
 GetOptions(
-           'fasta|ref=s' => \$ref,
+           'command=s' => \$command,
 	   'tmp=s' => \$tmpfile,
 	   'out|outdir=s' => \$out_dir,
 	   'vars-only|vars_only' => \$vars_only,

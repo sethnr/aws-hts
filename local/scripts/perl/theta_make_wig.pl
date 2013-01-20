@@ -7,6 +7,8 @@
 "3L", "NT_078267.5",
 "UNKN","NC_002084.1");
 
+$ncbi_chrs = 0;
+
 my $format = "%s\t%d\t%d\t%s";
 my %tracks;
 my @tracks;
@@ -28,13 +30,16 @@ sub _start_track {
   }
 sub _start_block {
     my ($chr, $start, $end) =  @_;
-    my $middle = (($end - $start)/2)+$start+0.5;
+    my $middle = (($end - $start)/2)+$start;
+    
 #    $step = ($end - $start +1);
     $step = 1000;
     $last_chr = $chr;
     for ($i=0; $i<=$#tracks; $i++) {    
       # shiftfixedStep chrom=chr3 start=400601 step=100
-      $tracks{$tracks[$i]} .=  "fixedStep chrom=".$chrs{$chr}." start=".($middle - ($step/2))." step=".$step." span=".$step."\n";
+      $tracks{$tracks[$i]} .=  "fixedStep chrom=".$chrs{$chr}." start=".($middle - ($step/2))." step=".$step." span=".$step."\n" if $ncbi_chrs;
+      $tracks{$tracks[$i]} .=  "fixedStep chrom=".$chr." start=".($middle - ($step/2))." step=".$step." span=".$step."\n" unless $ncbi_chrs;
+      
       }
   }
 

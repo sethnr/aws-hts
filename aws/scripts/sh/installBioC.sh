@@ -21,5 +21,12 @@
 #sudo ln -fs `which gcc-4.3` `which gcc`
 
 # install bioC packages
+# install dependencies from source:
+sudo  mkdir ~/rdeps_src/
+wget http://cran.r-project.org/src/contrib/Archive/lattice/lattice_0.20-10.tar.gz ~/rdeps_src/
+sudo R -e "options(repos=structure(c(CRAN=\"http://cran.ma.imperial.ac.uk/\"))); library(tools); write_PACKAGES(\"~/rdeps_src\"); install.packages(\"lattice_0.20-10.tar.gz\",\"/usr/local/lib/R/site-library\")"
+sudo R -e "options(repos=structure(c(CRAN=\"http://cran.ma.imperial.ac.uk/\"))); library(tools); write_PACKAGES(\"~/rdeps_src\"); install.packages(\"lattice_0.20-10.tar.gz\",\"/usr/lib/R/library\")"
+
 sudo R -e "options(repos=structure(c(CRAN=\"http://cran.ma.imperial.ac.uk/\"))); install.packages(\"zoo\")"
+
 sudo R -e "source('http://bioconductor.org/biocLite.R');biocLite(character(0), ask=FALSE);biocLite(c(\"fastseg\",\"snpStats\",\"ShortRead\",\"GGtools\"))"

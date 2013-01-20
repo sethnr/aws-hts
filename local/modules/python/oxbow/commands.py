@@ -116,13 +116,12 @@ json['bamsplit']='''{
   "HadoopJarStep": { 
     "Jar": "$HADOOP_JAR", 
     "Args": [ 
-      "-D", "mapred.map.tasks=1",
+      "-D", "mapred.map.tasks=6",
       "-D", "mapred.reduce.tasks=$NO_SAM_TASKS",
       "-input",	      "$INPUT",
       "-output",      "$OUTPUT",
       "-mapper",      "perl bam_split_by_chunk.pl --chunk $CHUNK_SIZE -flank $FLANK_SIZE ",
       "-reducer",     "perl sam_strip.pl --header sam.header --aligned --cliptag",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#stripSam.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#sam_strip.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/bam_split_by_chunk.pl#bam_split_by_chunk.pl",
 
@@ -143,7 +142,6 @@ json['gbamsplit']='''{
       "-output",      "$OUTPUT",
       "-mapper",      "perl bam_split_by_chunk.pl --chunk $CHUNK_SIZE -flank $FLANK_SIZE -gz",
       "-reducer",     "perl sam_strip.pl --header sam.header --aligned --cliptag",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#stripSam.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_strip.pl#sam_strip.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/bam_split_by_chunk.pl#bam_split_by_chunk.pl",
 
@@ -178,24 +176,46 @@ json['samtobam']='''{
   }
 }'''
 
-descs['samdepth']='''takes output of sam / splitsam, calculates depth (samtools), sum by posn (mapred:aggregate) '''
-json['samdepth']='''{
-  "Name": "read depth", 
+descs['samtobam']='''takes output of sam / splitsam, makes bam file (no reduce)'''
+json['samtobam']='''{
+  "Name": "sam to (sorted) bam - samtools", 
   "ActionOnFailure": "$ACTION_ON_FAILURE", 
   "HadoopJarStep": { 
     "Jar": "$HADOOP_JAR", 
     "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
       "-input",	      "$INPUT",
       "-output",      "$OUTPUT",
-      "-mapper",      "perl sam_depth.pl --aggregate",
-      "-reducer",     "aggregate",
+      "-mapper",      "perl sam_to_bam.pl",
       "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
-      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_depth.pl#sam_depth.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/stripSam.pl#stripSam.pl",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/sam_to_vcf.pl#sam_to_vcf.pl",
 
       "-cacheFile", "$GENOME_REF_I#ref_genome.fa",
       "-cacheFile",   "$SAM_HEADER#sam.header"
+    ] 
+  }
+}'''
+
+
+
+descs['samsort']='''sorts sam file, outputs sorted file (no reduce) '''
+json['samsort']='''{
+  "Name": "samsort $INPUT", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-input",	      "$INPUT",
+      "-output",      "$OUTPUT",
+      "-mapper",      "samtools_wrap.pl sort ",
+      "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/samtools_wrap.pl#samtools_wrap.pl",
     ] 
   }
 }'''
@@ -451,7 +471,7 @@ json['theta']='''{
       "-D", "mapred.tasktracker.map.tasks.maximum=$MAX_TASKS",
       "-input",      "$INPUT",
       "-output",     "$OUTPUT",
-      "-mapper",      "R --slave --vanilla -f vcf_slidingWin_theta.R --args window=10000 step=1000 fillBases=T pool_size=20" ,
+      "-mapper",      "R --slave --vanilla -f vcf_slidingWin_theta.R --args input=vcf window=10000 step=1000 fillBases=T pool_size=20" ,
       "-cacheFile",   "s3n://hts-analyses/scripts/R/vcf_slidingWin_theta.R#vcf_slidingWin_theta.R",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/vcf-merge#vcf-merge",
@@ -463,5 +483,52 @@ json['theta']='''{
       "-cacheFile", "$GENOME_REF_I#ref_genome.fa"
     ] 
   }
+}'''
+
+descs['theta_P']='''make manifest of files for each sample folder'''
+json['theta_P']='''{
+"Name": "vcf theta permutations $S3DIR ", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-D", "mapred.map.tasks=100",
+      "-input",      "$INPUT",
+      "-output",     "$OUTPUT",
+      "-mapper",      "R --slave --vanilla -f vcf_slidingWin_theta.R --args input=index window=10000 step=1000 fillBases=T pool_size=20" ,
+      "-cacheFile",   "s3n://hts-analyses/scripts/R/vcf_slidingWin_theta.R#vcf_slidingWin_theta.R",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/vcf-merge#vcf-merge",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
+      "-cacheFile","s3n://hts-analyses/software/s3cmd-1.1.0.tgz#s3cmd.tgz",
+      "-cacheFile","s3n://hts-analyses/software/s3cmd/s3cmd_config#s3cmd.config",
+      "-cacheFile","s3n://hts-analyses/software/tabix/tabix#tabix",
+      "-cacheFile","s3n://hts-analyses/software/tabix/bgzip#bgzip",
+      "-cacheFile","s3n://hts-analyses/lib/vcfPerlMods.tgz#vcfPerlMods.tgz",
+      "-cacheFile", "$GENOME_REF_I#ref_genome.fa"
+    ] 
+  }
+}'''
+
+
+
+descs['LDx']='''get LD from ALL bams'''
+json['LDx']='''{
+"Name": "LDx $S3DIR ", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.tasktracker.map.tasks.maximum=$MAX_TASKS",
+      "-input",      "$INPUT",
+      "-output",     "$OUTPUT",
+      "-mapper",      "perl wrapper_LDx.pl  --chunk $CHUNK_SIZE --ref reference.vcf.gz " ,
+      "-cacheFile","s3n://hts-analyses/software/LDx/LDx.pl#LDx.pl",
+      "-cacheFile","s3n://hts-outputs/Fd.combined.vcf.gz#reference.vcf.gz",
+      "-cacheFile","s3n://hts-analyses/scripts/perl/wrapper_LDx.pl#wrapper_LDx.pl", 
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools"
+      ]
+   }
 }'''
 
