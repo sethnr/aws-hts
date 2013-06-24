@@ -1,0 +1,64 @@
+# Example of configuration file used by Bio::EnsEMBL::Registry::load_all
+# method to store/register all kind of Adaptors.
+
+use strict;
+use warnings;
+
+use Bio::EnsEMBL::Utils::ConfigRegistry;
+use Bio::EnsEMBL::DBSQL::DBAdaptor;
+use Bio::EnsEMBL::Compara::DBSQL::DBAdaptor;
+
+my @aliases;
+
+new Bio::EnsEMBL::DBSQL::DBAdaptor(
+                                 '-host'    => 'localhost',
+                                 '-user'    => 'seth',
+                                 '-port'    => '3306',
+				 '-pass'    => 'liverpool',
+                                 '-species' => 'Anopheles gambiae',
+                                 '-group'   => 'core',
+                                 '-dbname'  => 'anopheles_gambiae_core_12_65_3'
+);
+new Bio::EnsEMBL::DBSQL::DBAdaptor(
+                                 '-host'    => 'localhost',
+                                 '-user'    => 'seth',
+				 '-pass'    => 'liverpool',
+                                 '-port'    => '3306',
+                                 '-species' => 'Anopheles gambiae',
+                                 '-group'   => 'variation',
+                                 '-dbname'  => 'anopheles_gambiae_variation_12_65_3'
+);
+
+
+@aliases = ( 'moz',    'anopheles' , 'agambiae', 'mosquito');
+
+Bio::EnsEMBL::Utils::ConfigRegistry->add_alias(
+                                           '-species' => 'Anopheles gambiae',
+                                           '-alias'   => [@aliases] );
+
+
+new Bio::EnsEMBL::DBSQL::DBAdaptor(
+                                 '-host'    => 'mysql.ebi.ac.uk',
+                                 '-user'    => 'anonymous',
+                                 '-port'    => '4157',
+                                 '-species' => 'Aedes aegypti',
+                                 '-group'   => 'core',
+                                 '-dbname'  => 'aedes_aegypti_core_9_62_1e'
+);
+
+new Bio::EnsEMBL::DBSQL::DBAdaptor(
+                                 '-host'    => 'mysql.ebi.ac.uk',
+                                 '-user'    => 'anonymous',
+                                 '-port'    => '4157',
+                                 '-species' => 'Aedes aegypti',
+                                 '-group'   => 'variation',
+                                 '-dbname'  => 'aedes_aegypti_variation_9_62_1e'
+);
+
+@aliases = ( 'aedes', 'tiger mosquito');
+Bio::EnsEMBL::Utils::ConfigRegistry->add_alias(
+                                           '-species' => 'Aedes aegypti',
+                                           '-alias'   => [@aliases] );
+
+
+return 1;

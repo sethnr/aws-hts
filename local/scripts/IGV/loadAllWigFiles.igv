@@ -1,0 +1,7 @@
+load ~/Work/nextGen_resources/genomes/AgamP3/AgamP3.fa
+load ~/Work/nextGen_resources/genebuilds/agambiae.BASEFEATURES_PEST-AgamP3.7.DESCS.gff3
+load Fd03_high_s.wig,Fd03_low_s.wig,Fd03_zero_s.wig,Fd03_total.wig
+load Fd03.theta.sd.wig,Fd03.theta.sd_seg.wig
+load Fd09_high_s.wig,Fd09_low_s.wig,Fd09_zero_s.wig,Fd09_total.wig
+load Fd09.theta.sd.wig,Fd09.theta.sd_seg.wig
+load ./our_feats.bed

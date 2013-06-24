@@ -1,0 +1,3 @@
+Fd03_high::s3://hts-outputs/Fd03_highB/samsplit/part-00000	Fd03_low::s3://hts-outputs/Fd03_lowB/samsplit/part-00000	Fd03_zero::s3://hts-outputs/Fd03_zeroB/samsplit/part-00000
+Fd03_high::s3://hts-outputs/Fd03_highB/samsplit/part-00001	Fd03_low::s3://hts-outputs/Fd03_lowB/samsplit/part-00001	Fd03_zero::s3://hts-outputs/Fd03_zeroB/samsplit/part-00001
+Fd03_high::s3://hts-outputs/Fd03_highB/samsplit/part-00004	Fd03_low::s3://hts-outputs/Fd03_lowB/samsplit/part-00004	Fd03_zero::s3://hts-outputs/Fd03_zeroB/samsplit/part-00004
