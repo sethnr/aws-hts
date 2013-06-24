@@ -8,14 +8,15 @@ my $ref = "reference.vcf.gz";
 my $step = "10k";
 my $chunk = "0.5m";
 my $ld_script = "LDx.pl";
-
+my $header;
 
 GetOptions(
            'ref=s' => \$ref,
 	   'tmp=s' => \$tmpfile,
 	   'step=s' => \$step,
 	   'chunk=s' => \$chunk,
-	   'ld=s', => \$ld_script
+	   'ld=s', => \$ld_script,
+	   'replace_header|header=s' => \$header
           );
 
 sub _run_command {
@@ -55,11 +56,20 @@ print STDERR `ls -l`;
 
 print STDERR "dumping infile\n";
 open (INFILE , ">$tmpfile");
+if($header) {
+  open (HEADER , "$header");
+  while(<HEADER>) {print INFILE $_;}
+  close(HEADER);
+}
 while(<>) {
+  next if($header && m/^\@/gi);
   @F = split;
   print INFILE $_;
   }
 close(INFILE);
+
+print STDERR `head -n 10 $tmpfile`;
+
 print STDERR "sorting infile\n";
 _run_command("samtools view -Sb ".$tmpfile." > ".$tmpfile.".bam");    
 _run_command("samtools sort ".$tmpfile.".bam ".$tmpfile.".s");    

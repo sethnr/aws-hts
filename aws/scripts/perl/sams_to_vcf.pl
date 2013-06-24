@@ -10,19 +10,22 @@ my $vars_only;
 my $noDups;
 my $out_dir;
 my $step;
-my $chunk;
+my $chunk = 50000;
+my $reheader;
 
 GetOptions(
-           'command=s' => \$command,
+#           'command=s' => \$command,
+	   'ref=s' => \$ref,
 	   'tmp=s' => \$tmpfile,
 	   'out|outdir=s' => \$out_dir,
 	   'vars-only|vars_only' => \$vars_only,
 	   'noclean' => \$noclean,
 	   'step=s' => \$step,
 	   'chunk=s' => \$chunk,
-	   'no-dups|nd' => \$noDups
+	   'no-dups|nd' => \$noDups,
+	   'reheader|replace_header=s' => \$reheader
           );
-
+@ARGV = ();
 if($noDups) {$noDups = " -d ";} else{$noDups = "";}
 
 sub cleanNo {
@@ -60,6 +63,13 @@ $ENV{'PATH'} = '.:./bin/:'.$ENV{'PATH'};
 print STDERR $ENV{'PATH'};
 print STDERR `ls -l`;
 
+if ($reheader) {
+  local $/=undef;
+  open(REHEADER,"<$reheader");
+  $reheader = <REHEADER>;
+  close(REHEADER);
+}
+
 while(<>) {
   print STDERR $_;
   my @files = split;
@@ -72,6 +82,17 @@ while(<>) {
 #    print STDERR `ls -l tabix`;
     _run_command("./s3cmd/s3cmd --config ./s3cmd/s3cmd_config get ".$getfile." ".$tmpfile." > /dev/null");    
 #    my $s3command = `./s3cmd/s3cmd --config ./s3cmd/s3cmd_config get $getfile $tmpfile `;    
+    if ($reheader) {
+      print STDERR "replacing header with:\n".$reheader."\n";
+      _run_command("mv ".$tmpfile." ".$tmpfile.".oldhead");
+      open(OLDHEAD,"<".$tmpfile.".oldhead");
+      open(NEWHEAD,">$tmpfile");
+
+      print NEWHEAD $reheader;
+      while(<OLDHEAD>) {print NEWHEAD $_ unless (m/^\@/gi);} 
+      close(OLDHEAD);
+      close(NEWHEAD);
+    }
     _run_command("./samtools view -Sb ".$tmpfile." > ".$tmpfile.".bam");
     _run_command("./samtools sort ./".$tmpfile.".bam ".$tmpfile.".s");
     _run_command("./samtools mpileup -Dgf ".$ref."  ".$tmpfile.".s.bam > ".$tmpfile.".bcf");

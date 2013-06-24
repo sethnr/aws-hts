@@ -8,7 +8,7 @@ my @samples;
 
 foreach $arg (@ARGV) {
   my ($sample, $dir) = split("::",$arg);
-#  print STDERR "getting $sample samples from $dir \n";
+  print STDERR "getting $sample samples from $dir \n";
 
   my @responses = `s3cmd ls $dir`;
   print STDERR $#responses. " responses returned\n";

@@ -126,7 +126,6 @@ $nonpoly = 0;
 
 #Number of total SNP pairs identified 
 
-$print = 0;
 ##########################################
 #Convert/Parse the data
 ##########################################
@@ -188,7 +187,7 @@ while(<SNPS>){
 }
 
 $snpnum= @snps;
-
+print $snpnum." SNPS parsed from ".$vcf_in."\n" if $print;
 
 for($i = 0; $i< @snps; $i++){
     chomp(@snps[$i]);
@@ -245,14 +244,14 @@ while(<FILE>){
     $lenmatch = $length . "M";
 
     if(@in[5] =~ $lenmatch){
-	#print "No indel...\n";
+	print "No indel...\n" if $print;
     }
     elsif(@in[5] =~ "\\*"){
-	#print "no match. Discard.\n";
+	print "no match. Discard.\n" if $print;
 	$stop = 1;
     }
     else{
-	#print "Indel detected. Correcting.\n";
+	print "Indel detected. Correcting.\n" if $print;
 
 	#split the CIGAR string into alpha and numeric components
 	@alp = split('[0-9]+', @in[5]);
@@ -339,11 +338,11 @@ while(<FILE>){
 	#if the SNP falls before the start of the read, we no longer need to examine this SNP
 	#Therefore, we have all the information we're going to get about this SNP and we can see if we can throw it out because of read depth or polymorphism 
 	#reasons
-
+#	print $query." < ".$start." ?\n" if $print;
 	if($query < $start){
 	
 
-#	    print "\n\nProcessing: $query\n\n";
+	    print "Processing: $query\n" if $print;
 
 	    $tmpind++;
 	    $ind = $tmpind;

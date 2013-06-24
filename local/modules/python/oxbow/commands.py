@@ -73,13 +73,34 @@ json['sam'] = '''{
       "-D", "mapred.reduce.tasks=0",
       "-input",       "$INPUT",
       "-output",      "$OUTPUT",
-      "-mapper",      "$CROSSBOW_EMR/Align.pl  --discard-reads=0 --ref=$GENOME_REF_JAR --destdir=/mnt/16326 --partlen=1000000 --qual=phred33 --truncate=0  -- --partition 1000000 -t --hadoopout --startverbose -M 1 --sam",
+      "-mapper",      "$CROSSBOW_EMR/Align.pl  --discard-reads=0 --ref=$GENOME_REF_JAR --destdir=/mnt/16326 --partlen=1000000 --qual=phred33 --truncate=0  -- --partition 1000000 -t --hadoopout --startverbose -M 1 --sam  -X 4000",
       "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
       "-cacheFile",   "$CROSSBOW_EMR/Get.pm#Get.pm",
       "-cacheFile",   "$CROSSBOW_EMR/Counters.pm#Counters.pm",
       "-cacheFile",   "$CROSSBOW_EMR/Util.pm#Util.pm",
       "-cacheFile",   "$CROSSBOW_EMR/Tools.pm#Tools.pm",
       "-cacheFile",   "$CROSSBOW_EMR/AWS.pm#AWS.pm"
+      $OPTS
+    ]
+  }
+}'''
+
+# ALIGN WITH Bowtie2
+descs['bowtie2'] = '''align seqs in tgz files using align.pl script from crossbow'''
+json['bowtie2'] = '''{
+  "Name": "Align with Bowtie (sam2)", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-input",       "$INPUT",
+      "-output",      "$OUTPUT",
+      "-mapper",      " perl run_bowtie2.pl ./b2_genome/AgamP3 --fast -X 3000",
+      "-cacheArchive", "$GENOME_REF_BJAR#b2_genome",
+      "-cacheFile",   "s3n://hts-analyses/scripts/perl/run_bowtie2.pl#run_bowtie2.pl",
+      "-cacheFile",   "s3n://hts-analyses/software/bowtie2/bowtie2#bowtie2",
+      "-cacheFile",   "s3n://hts-analyses/software/bowtie2/bowtie2-align#bowtie2-align",
       $OPTS
     ]
   }
@@ -220,8 +241,8 @@ json['samsort']='''{
   }
 }'''
 
-descs['samdepthgrep']='''takes output of sam / splitsam, calculates depth (samtools), sum by posn (mapred:aggregate) '''
-json['samdepthgrep']='''{
+descs['samdepth']='''takes output of sam / splitsam, calculates depth (samtools), sum by posn (mapred:aggregate) '''
+json['samdepth']='''{
   "Name": "read depth", 
   "ActionOnFailure": "$ACTION_ON_FAILURE", 
   "HadoopJarStep": { 
@@ -230,7 +251,7 @@ json['samdepthgrep']='''{
       "-input",	      "$INPUT",
       "-output",      "$OUTPUT",
       "-mapper",      "perl sam_depth.pl --aggregate",
-      "-reducer",     "grep -e 0.10076461 -e 0.10078610 -e 6.222023",
+      "-reducer",     "aggregate",
       "-cacheFile",   "$CROSSBOW_EMR/bowtie64#bowtie",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
@@ -444,7 +465,7 @@ json['combined_vcf']='''{
       "-D", "mapred.reduce.tasks=0",
       "-input",      "$INPUT",
       "-output",     "$S3DIR/null",
-      "-mapper",      "perl sams_to_vcf.pl -ref ./ref_genome.fa -vars-only -outdir /hts-outputs/Fd03/combined_vcf -chunk $CHUNK_SIZE -no-dups",
+      "-mapper",      "perl sams_to_vcf.pl -ref ./ref_genome.fa -vars-only -outdir /hts-outputs/dmfa_imls/EP01/Pfin5P/combined_vcf -chunk $CHUNK_SIZE -no-dups --reheader sam.header",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/vcf_prep_for_merge.pl#vcf_prep_for_merge.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/vcfs_merge.pl#vcfs_merge.pl",
       "-cacheFile",   "s3n://hts-analyses/scripts/perl/sams_to_vcf.pl#sams_to_vcf.pl",
@@ -455,7 +476,8 @@ json['combined_vcf']='''{
       "-cacheFile","s3n://hts-analyses/software/tabix/tabix#tabix",
       "-cacheFile","s3n://hts-analyses/software/tabix/bgzip#bgzip",
       "-cacheFile","s3n://hts-analyses/lib/vcfPerlMods.tgz#vcfPerlMods.tgz",
-      "-cacheFile", "$GENOME_REF#ref_genome.fa"
+      "-cacheFile", "$GENOME_REF#ref_genome.fa",
+      "-cacheFile",   "$SAM_HEADER#sam.header"
     ] 
   }
 }'''
@@ -485,6 +507,111 @@ json['theta']='''{
   }
 }'''
 
+descs['mafCon']='''calculate contrast from MAFs in sliding window'''
+json['mafCon']='''{
+"Name": "vcf: MAF contrast $S3DIR ", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-D", "mapred.tasktracker.map.tasks.maximum=$MAX_TASKS",
+      "-input",      "$INPUT",
+      "-output",     "$OUTPUT",
+      "-mapper",      "R --slave --vanilla -f vcf_slidingWin_bafContrast.R --args input=vcf window=10000 step=1000 " ,
+      "-cacheFile",   "s3n://hts-analyses/scripts/R/vcf_slidingWin_bafContrast.R#vcf_slidingWin_bafContrast.R",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/vcf-merge#vcf-merge",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
+      "-cacheFile","s3n://hts-analyses/software/s3cmd-1.1.0.tgz#s3cmd.tgz",
+      "-cacheFile","s3n://hts-analyses/software/tabix/tabix#tabix",
+      "-cacheFile","s3n://hts-analyses/software/tabix/bgzip#bgzip",
+      "-cacheFile","s3n://hts-analyses/lib/vcfPerlMods.tgz#vcfPerlMods.tgz",
+      "-cacheFile", "$GENOME_REF_I#ref_genome.fa"
+    ] 
+  }
+}'''
+
+descs['mafCon_bench2']='''calculate contrast from MAFs in sliding window'''
+json['mafCon_bench2']='''{
+"Name": "vcf: MAF contrast $S3DIR ", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-D", "mapred.tasktracker.map.tasks.maximum=$MAX_TASKS",
+      "-input",      "$INPUT",
+      "-output",     "$OUTPUT",
+      "-mapper",      "R --slave --vanilla -f vcf_slidingWin_bafContrast_benchmark.R --args input=vcf window=10000 step=1000 min_maf=0.2" ,
+      "-cacheFile",   "s3n://hts-analyses/scripts/R/vcf_slidingWin_bafContrast_benchmark.R#vcf_slidingWin_bafContrast_benchmark.R",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/vcf-merge#vcf-merge",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
+      "-cacheFile","s3n://hts-analyses/software/s3cmd-1.1.0.tgz#s3cmd.tgz",
+      "-cacheFile","s3n://hts-analyses/software/tabix/tabix#tabix",
+      "-cacheFile","s3n://hts-analyses/software/tabix/bgzip#bgzip",
+      "-cacheFile","s3n://hts-analyses/lib/vcfPerlMods.tgz#vcfPerlMods.tgz",
+      "-cacheFile", "$GENOME_REF_I#ref_genome.fa"
+    ] 
+  }
+}'''
+
+
+
+descs['bafs']='''parse all bafs for each pos, sample + total'''
+json['bafs']='''{
+"Name": "vcf bafs $S3DIR ", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-D", "mapred.tasktracker.map.tasks.maximum=$MAX_TASKS",
+      "-input",      "$INPUT",
+      "-output",     "$OUTPUT",
+      "-mapper",      "R --slave --vanilla -f vcf_slidingWin_bafs.R --args input=vcf" ,
+      "-cacheFile",   "s3n://hts-analyses/scripts/R/vcf_slidingWin_bafs.R#vcf_slidingWin_bafs.R",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/vcf-merge#vcf-merge",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
+      "-cacheFile","s3n://hts-analyses/software/s3cmd-1.1.0.tgz#s3cmd.tgz",
+      "-cacheFile","s3n://hts-analyses/software/tabix/tabix#tabix",
+      "-cacheFile","s3n://hts-analyses/software/tabix/bgzip#bgzip",
+      "-cacheFile","s3n://hts-analyses/lib/vcfPerlMods.tgz#vcfPerlMods.tgz",
+      "-cacheFile", "$GENOME_REF_I#ref_genome.fa"
+    ] 
+  }
+}'''
+
+descs['vcfD']='''parse all bafs for each pos, sample + total'''
+json['vcfD']='''{
+"Name": "vcf depth $S3DIR ", 
+  "ActionOnFailure": "$ACTION_ON_FAILURE", 
+  "HadoopJarStep": { 
+    "Jar": "$HADOOP_JAR", 
+    "Args": [ 
+      "-D", "mapred.reduce.tasks=0",
+      "-D", "mapred.tasktracker.map.tasks.maximum=$MAX_TASKS",
+      "-input",      "$INPUT",
+      "-output",     "$OUTPUT",
+      "-mapper",      "R --slave --vanilla -f vcf_depths.R --args input=vcf" ,
+      "-cacheFile",   "s3n://hts-analyses/scripts/R/vcf_depths.R#vcf_depths.R",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/vcf-merge#vcf-merge",
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/bcftools#bcftools",
+      "-cacheFile","s3n://hts-analyses/software/s3cmd-1.1.0.tgz#s3cmd.tgz",
+      "-cacheFile","s3n://hts-analyses/software/tabix/tabix#tabix",
+      "-cacheFile","s3n://hts-analyses/software/tabix/bgzip#bgzip",
+      "-cacheFile","s3n://hts-analyses/lib/vcfPerlMods.tgz#vcfPerlMods.tgz",
+      "-cacheFile", "$GENOME_REF_I#ref_genome.fa"
+    ] 
+  }
+}'''
+
+
+
+
 descs['theta_P']='''make manifest of files for each sample folder'''
 json['theta_P']='''{
 "Name": "vcf theta permutations $S3DIR ", 
@@ -493,10 +620,10 @@ json['theta_P']='''{
     "Jar": "$HADOOP_JAR", 
     "Args": [ 
       "-D", "mapred.reduce.tasks=0",
-      "-D", "mapred.map.tasks=100",
+      "-D", "mapred.map.tasks=1000",
       "-input",      "$INPUT",
       "-output",     "$OUTPUT",
-      "-mapper",      "R --slave --vanilla -f vcf_slidingWin_theta.R --args input=index window=10000 step=1000 fillBases=T pool_size=20" ,
+      "-mapper",      "R --slave --vanilla -f vcf_slidingWin_theta.R --args input=index window=10000 step=1000 chunk=1000000 fillBases=T pool_size=20" ,
       "-cacheFile",   "s3n://hts-analyses/scripts/R/vcf_slidingWin_theta.R#vcf_slidingWin_theta.R",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
       "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/vcf-merge#vcf-merge",
@@ -523,11 +650,12 @@ json['LDx']='''{
       "-D", "mapred.tasktracker.map.tasks.maximum=$MAX_TASKS",
       "-input",      "$INPUT",
       "-output",     "$OUTPUT",
-      "-mapper",      "perl wrapper_LDx.pl  --chunk $CHUNK_SIZE --ref reference.vcf.gz " ,
+      "-mapper",      "perl wrapper_LDx.pl  --chunk $CHUNK_SIZE --ref reference.vcf.gz --replace_header sam.header" ,
       "-cacheFile","s3n://hts-analyses/software/LDx/LDx.pl#LDx.pl",
       "-cacheFile","s3n://hts-outputs/Fd.combined.vcf.gz#reference.vcf.gz",
       "-cacheFile","s3n://hts-analyses/scripts/perl/wrapper_LDx.pl#wrapper_LDx.pl", 
-      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools"
+      "-cacheFile",   "s3n://hts-analyses/software/samtools-0.1.18/samtools#samtools",
+      "-cacheFile",   "$SAM_HEADER#sam.header"
       ]
    }
 }'''
